@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# İşletme Asistanı
 
-## Getting Started
+Küçük işletmeler için **müşteri, randevu, paket ve ödeme yönetimini** tek panelde toplayan, mobil uyumlu, **sektör bağımsız** bir yönetim uygulaması. Kuaför, pilates/spor stüdyosu, güzellik salonu, özel ders, klinik gibi randevuyla çalışan her işletme için uyarlanabilir.
 
-First, run the development server:
+> Portföy / öğrenme projesi. Ücretsiz çalışır (paralı API bağımlılığı yoktur).
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Özellikler
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **Müşteri yönetimi** — notlar, etiketler, Türk telefon formatı/doğrulama, KVKK açık rıza takibi
+- **Randevu** — hizmet bazlı süre/fiyat, durum takibi (planlandı/tamamlandı/iptal/gelmedi), **tekrarlayan randevu** (haftalık/2 haftada bir/aylık), **takvim görünümü**
+- **Paket & üyelik** — *seans paketi* (ders hakkı bazlı) ve *aylık üyelik* (ödeme günü takipli); otomatik kalan seans hesabı
+- **Telafi sistemi** — kaçırılan randevu için telafi kaydı + pakete saymayan telafi randevusu (paket başına 1 hak, alındığı ay içinde)
+- **Çalışanlar** — müşteri/randevuya sorumlu çalışan atama, çalışana göre filtre ve performans raporu
+- **Çalışma saatleri & kapalı günler** — randevuda uygunluk uyarısı (opt-in)
+- **Bildirim merkezi** — yaklaşan randevu, ödeme ve bitmek üzere paket bildirimleri; her birinde önceden hazırlanmış WhatsApp mesajı
+- **Mesajlaşma** — dinamik şablonlar (`{ad} {tarih} {saat} {hizmet} {paket} {kalan} {isletme}`), toplu mesaj (segment + KVKK), hatırlatma takibi — tümü WhatsApp (wa.me) ile, ücretsiz
+- **Ödeme defteri** — fiilen tahsil edilen ödemelerin kaydı (nakit/kart/havale) + IBAN'lı ödeme mesajı
+- **Raporlar** — aylık gelir tahmini, tahsilat, tamamlanma oranı, no-show, en çok kazandıran hizmetler, sadık müşteriler, çalışan performansı
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Teknolojiler
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Katman | Teknoloji |
+|---|---|
+| Framework | Next.js 16 (App Router, Server Components) |
+| Dil | TypeScript |
+| UI | React 19, Tailwind CSS 4, lucide-react, sonner |
+| Veritabanı & Auth | Supabase (PostgreSQL + Auth + Row Level Security) |
+| Doğrulama | Zod |
 
-## Learn More
+## Mimari notlar
 
-To learn more about Next.js, take a look at the following resources:
+- **Çok kiracılı (multi-tenant):** her satır `organization_id` ile sahibine bağlı; **RLS** ile her işletme yalnızca kendi verisini görür.
+- **Sektör bağımsız:** tablo ve arayüz metinleri jeneriktir (hasta/öğrenci yerine `customers`, ders/tedavi yerine `services`). Sektöre özel kavramlar (paket türü, telafi, çalışan) verisi yoksa arayüzde görünmez.
+- **Saat dilimi:** tüm tarih/saat işlemleri Türkiye'ye (Europe/Istanbul) sabitlenmiştir; sunucu UTC'de çalışsa bile doğru.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Kurulum
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. **Supabase projesi oluştur** ve `supabase/schema.sql` dosyasını SQL Editor'de çalıştır (tüm tablolar + RLS; idempotent — tekrar çalıştırmak güvenli).
+2. **`.env.local`** oluştur:
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=...
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+   ```
+3. Bağımlılıklar ve geliştirme sunucusu:
+   ```bash
+   npm install
+   npm run dev
+   ```
+   → http://localhost:3000
 
-## Deploy on Vercel
+## Veritabanı
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Şema `supabase/schema.sql` içindedir; artımlı değişiklikler `supabase/migrations/` altında (001–007). Mevcut bir veritabanını güncellemek için `schema.sql`'i yeniden çalıştırmak yeterlidir (`create ... if not exists`, `add column if not exists`, `drop policy if exists` ile idempotent).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Başlıca tablolar: `organizations`, `organization_members`, `customers`, `services`, `appointments`, `customer_packages`, `makeups`, `staff`, `business_hours`, `closed_days`, `payments`.

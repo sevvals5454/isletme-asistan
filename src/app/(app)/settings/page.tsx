@@ -1,0 +1,190 @@
+import { Sparkles, Scissors, Users, Wallet, Clock, CalendarX } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
+import { OrgNameForm } from "@/components/org-name-form";
+import { OrgIbanForm } from "@/components/org-iban-form";
+import { ServicesManager } from "@/components/services-manager";
+import { StaffManager } from "@/components/staff-manager";
+import { BusinessHoursManager } from "@/components/business-hours-manager";
+import {
+  ClosedDaysManager,
+  type ClosedDay,
+} from "@/components/closed-days-manager";
+import { type DayHours } from "@/lib/hours";
+
+export default async function SettingsPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: membership } = await supabase
+    .from("organization_members")
+    .select(
+      "organization_id, role, organizations(id, name, plan, iban, iban_name, created_at)",
+    )
+    .eq("user_id", user!.id)
+    .single();
+
+  const org = membership?.organizations as unknown as {
+    id: string;
+    name: string;
+    plan: string;
+    iban: string | null;
+    iban_name: string | null;
+    created_at: string;
+  } | null;
+
+  const [{ data: services }, { data: staff }, { data: hours }, { data: closed }] =
+    await Promise.all([
+      supabase
+        .from("services")
+        .select("id, name, duration_min, price, active")
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("staff")
+        .select("id, name, active")
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("business_hours")
+        .select("weekday, is_open, open_time, close_time")
+        .order("weekday", { ascending: true }),
+      supabase
+        .from("closed_days")
+        .select("id, date, reason")
+        .order("date", { ascending: true }),
+    ]);
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-semibold">Ayarlar</h1>
+        <p className="text-sm text-muted-foreground">
+          İşletme bilgilerinizi ve kullanım istatistiklerinizi görüntüleyin
+        </p>
+      </div>
+
+      <section className="rounded-xl border bg-card p-6">
+        <h2 className="mb-1 font-semibold">İşletme bilgileri</h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Sidebar ve raporlarda görünecek isim
+        </p>
+        {org && <OrgNameForm orgId={org.id} initialName={org.name} />}
+      </section>
+
+      <section className="rounded-xl border bg-card p-6">
+        <div className="mb-1 flex items-center gap-2">
+          <Wallet className="h-4 w-4" />
+          <h2 className="font-semibold">IBAN / Ödeme bilgisi</h2>
+        </div>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Ödeme mesajlarında müşteriye gönderilecek IBAN
+        </p>
+        {org && (
+          <OrgIbanForm
+            orgId={org.id}
+            initialIban={org.iban ?? ""}
+            initialIbanName={org.iban_name ?? ""}
+          />
+        )}
+      </section>
+
+      <section className="rounded-xl border bg-card p-6">
+        <div className="mb-1 flex items-center gap-2">
+          <Scissors className="h-4 w-4" />
+          <h2 className="font-semibold">Hizmetler</h2>
+        </div>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Randevu oluştururken seçilecek hizmet kataloğu (süre ve fiyat)
+        </p>
+        {org && (
+          <ServicesManager orgId={org.id} initialServices={services ?? []} />
+        )}
+      </section>
+
+      <section className="rounded-xl border bg-card p-6">
+        <div className="mb-1 flex items-center gap-2">
+          <Users className="h-4 w-4" />
+          <h2 className="font-semibold">Çalışanlar</h2>
+        </div>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Müşteri ve randevu atanacak çalışanlar (eğitmen, uzman vb.)
+        </p>
+        {org && <StaffManager orgId={org.id} initialStaff={staff ?? []} />}
+      </section>
+
+      <section className="rounded-xl border bg-card p-6">
+        <div className="mb-1 flex items-center gap-2">
+          <Clock className="h-4 w-4" />
+          <h2 className="font-semibold">Çalışma saatleri</h2>
+        </div>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Randevu oluştururken saat dışı/kapalı gün uyarısı için (boş bırakırsan
+          kısıt olmaz)
+        </p>
+        {org && (
+          <BusinessHoursManager
+            orgId={org.id}
+            initialHours={(hours ?? []) as DayHours[]}
+          />
+        )}
+      </section>
+
+      <section className="rounded-xl border bg-card p-6">
+        <div className="mb-1 flex items-center gap-2">
+          <CalendarX className="h-4 w-4" />
+          <h2 className="font-semibold">Kapalı günler</h2>
+        </div>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Tatil/izin gibi belirli kapalı tarihler
+        </p>
+        {org && (
+          <ClosedDaysManager
+            orgId={org.id}
+            initialClosedDays={(closed ?? []) as ClosedDay[]}
+          />
+        )}
+      </section>
+
+      <section className="rounded-xl border bg-card p-6">
+        <div className="mb-4 flex items-center gap-2">
+          <Sparkles className="h-4 w-4" />
+          <h2 className="font-semibold">Plan</h2>
+        </div>
+        <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
+          <div>
+            <div className="text-sm font-medium capitalize">
+              {org?.plan ?? "free"} plan
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {org?.plan === "premium"
+                ? "Tüm özellikler ve öncelikli destek"
+                : "Temel özellikler — ücretsiz"}
+            </div>
+          </div>
+          {org?.plan !== "premium" && (
+            <button
+              disabled
+              className="rounded-lg border px-3 py-1.5 text-xs text-muted-foreground"
+            >
+              Yakında
+            </button>
+          )}
+        </div>
+      </section>
+
+      <section className="rounded-xl border bg-card p-6">
+        <h2 className="mb-1 font-semibold">Hesap</h2>
+        <div className="space-y-1 text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">E-posta</span>
+            <span>{user?.email}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Rol</span>
+            <span className="capitalize">{membership?.role ?? "—"}</span>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
