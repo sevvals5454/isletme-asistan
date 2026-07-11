@@ -571,3 +571,25 @@ create policy "expenses_insert" on public.expenses
 drop policy if exists "expenses_delete" on public.expenses;
 create policy "expenses_delete" on public.expenses
   for delete using (organization_id in (select public.user_org_ids()));
+
+-- ============================================================
+-- UYUMLULUK ALTER'LARI (idempotent)
+-- create-if-not-exists var olan tabloya kolon eklemediği için, mevcut
+-- veritabanlarında eksik kalan kolonları burada garanti ediyoruz.
+-- ============================================================
+
+alter table public.organizations add column if not exists iban text;
+alter table public.organizations add column if not exists iban_name text;
+
+alter table public.appointments add column if not exists reminder_sent_at timestamptz;
+alter table public.appointments add column if not exists recurrence_group_id uuid;
+alter table public.appointments add column if not exists staff_id uuid
+  references public.staff(id) on delete set null;
+
+alter table public.customer_packages add column if not exists type text
+  not null default 'session' check (type in ('session', 'monthly'));
+alter table public.customer_packages add column if not exists next_payment_at date;
+alter table public.customer_packages alter column total_sessions drop not null;
+
+alter table public.customers add column if not exists staff_id uuid
+  references public.staff(id) on delete set null;
