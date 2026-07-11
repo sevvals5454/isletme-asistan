@@ -35,6 +35,12 @@ export function trStartOfMonth(now: Date = new Date()): Date {
   );
 }
 
+// Belirli bir (yıl, ay0) için Türkiye ay başı (gerçek/UTC an). month0 taşarsa
+// (örn. 12) Date.UTC yıla taşır.
+export function trMonthStart(year: number, month0: number): Date {
+  return new Date(Date.UTC(year, month0, 1) - TR_OFFSET_MS);
+}
+
 // Ayın başından n ay sonrası (ay sınırı hesapları için).
 export function trAddMonths(now: Date, n: number): Date {
   const w = trWall(now);

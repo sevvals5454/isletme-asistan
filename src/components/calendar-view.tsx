@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -224,10 +225,19 @@ export function CalendarView() {
 
       {selected && (
         <div className="rounded-xl border bg-card p-6">
-          <h2 className="mb-4 font-semibold">
-            {selected.split("-").reverse().join(".")} —{" "}
-            {selectedAppts.length} randevu
-          </h2>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="font-semibold">
+              {selected.split("-").reverse().join(".")} — {selectedAppts.length}{" "}
+              randevu
+            </h2>
+            <Link
+              href={`/appointments?date=${selected}`}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Randevu ekle
+            </Link>
+          </div>
           {selectedAppts.length === 0 ? (
             <p className="py-4 text-center text-sm text-muted-foreground">
               Bu gün için randevu yok.

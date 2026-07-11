@@ -11,6 +11,8 @@ import {
   Trash2,
   MessageCircle,
   RotateCcw,
+  Pencil,
+  CalendarX,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
@@ -40,10 +42,21 @@ type Appointment = {
   service_id: string | null;
   package_id: string | null;
   staff_id: string | null;
+  recurrence_group_id: string | null;
   customers: { name: string; phone: string | null } | null;
   services: { name: string } | null;
   staff: { name: string } | null;
 };
+
+// datetime-local input değeri ("YYYY-MM-DDTHH:MM") — yerel/TR cihaz saatiyle.
+function isoToLocalInput(iso: string): string {
+  const d = new Date(iso);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+const APPT_SELECT =
+  "id, start_at, duration_min, status, price, notes, customer_id, service_id, package_id, staff_id, recurrence_group_id, customers(name, phone), services(name), staff(name)";
 
 type CustomerOption = { id: string; name: string };
 type StaffOption = { id: string; name: string };
@@ -74,6 +87,7 @@ export function AppointmentsView({
   hours,
   closedDays,
   orgName,
+  openNewAt,
 }: {
   orgId: string;
   initialAppointments: Appointment[];
@@ -84,13 +98,20 @@ export function AppointmentsView({
   hours: DayHours[];
   closedDays: string[];
   orgName: string;
+  openNewAt?: string; // takvimden gelen tarih (YYYY-MM-DD) → modalı aç
 }) {
   const router = useRouter();
   const [appointments, setAppointments] =
     useState<Appointment[]>(initialAppointments);
   const [tab, setTab] = useState<Tab>("today");
   const [staffFilter, setStaffFilter] = useState("");
-  const [modalOpen, setModalOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(!!openNewAt);
+  const [editingAppt, setEditingAppt] = useState<Appointment | null>(null);
+
+  function closeModal() {
+    setModalOpen(false);
+    setEditingAppt(null);
+  }
 
   const filtered = useMemo(() => {
     // Gün/hafta sınırları Türkiye saatine göre (cihaz saatinden bağımsız).
@@ -143,6 +164,38 @@ export function AppointmentsView({
     }
     setAppointments((prev) => prev.filter((a) => a.id !== appt.id));
     toast.success("Randevu silindi");
+    router.refresh();
+  }
+
+  async function deleteSeries(appt: Appointment) {
+    const gid = appt.recurrence_group_id;
+    if (!gid) return;
+    if (
+      !confirm(
+        "Bu tekrarlayan serinin bu ve sonraki randevularını silmek istiyor musun?",
+      )
+    )
+      return;
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("appointments")
+      .delete()
+      .eq("recurrence_group_id", gid)
+      .gte("start_at", appt.start_at);
+    if (error) {
+      toast.error("Seri silinemedi", { description: error.message });
+      return;
+    }
+    setAppointments((prev) =>
+      prev.filter(
+        (a) =>
+          !(
+            a.recurrence_group_id === gid &&
+            new Date(a.start_at) >= new Date(appt.start_at)
+          ),
+      ),
+    );
+    toast.success("Seri silindi");
     router.refresh();
   }
 
@@ -263,6 +316,14 @@ export function AppointmentsView({
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => setEditingAppt(a)}
+                        className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        aria-label="Düzenle"
+                        title="Düzenle"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
                       {(() => {
                         const url = whatsAppReminderUrl(
                           a.customers?.phone,
@@ -307,6 +368,16 @@ export function AppointmentsView({
                             </a>
                           ) : null;
                         })()}
+                      {a.recurrence_group_id && (
+                        <button
+                          onClick={() => deleteSeries(a)}
+                          className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                          aria-label="Seriyi sil"
+                          title="Tekrarlayan seriyi sil"
+                        >
+                          <CalendarX className="h-4 w-4" />
+                        </button>
+                      )}
                       <button
                         onClick={() => deleteAppointment(a)}
                         className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
@@ -323,7 +394,7 @@ export function AppointmentsView({
         </div>
       )}
 
-      {modalOpen && (
+      {(modalOpen || editingAppt) && (
         <AppointmentModal
           orgId={orgId}
           customers={customers}
@@ -332,7 +403,9 @@ export function AppointmentsView({
           staff={staff}
           hours={hours}
           closedDays={closedDays}
-          onClose={() => setModalOpen(false)}
+          editing={editingAppt}
+          initialDate={editingAppt ? undefined : openNewAt}
+          onClose={closeModal}
           onCreated={(appts) => {
             setAppointments((prev) =>
               [...appts, ...prev].sort(
@@ -341,7 +414,19 @@ export function AppointmentsView({
                   new Date(x.start_at).getTime(),
               ),
             );
-            setModalOpen(false);
+            closeModal();
+          }}
+          onUpdated={(appt) => {
+            setAppointments((prev) =>
+              prev
+                .map((a) => (a.id === appt.id ? appt : a))
+                .sort(
+                  (x, y) =>
+                    new Date(y.start_at).getTime() -
+                    new Date(x.start_at).getTime(),
+                ),
+            );
+            closeModal();
           }}
         />
       )}
@@ -378,8 +463,11 @@ function AppointmentModal({
   staff,
   hours,
   closedDays,
+  editing,
+  initialDate,
   onClose,
   onCreated,
+  onUpdated,
 }: {
   orgId: string;
   customers: CustomerOption[];
@@ -388,20 +476,32 @@ function AppointmentModal({
   staff: StaffOption[];
   hours: DayHours[];
   closedDays: string[];
+  editing?: Appointment | null;
+  initialDate?: string;
   onClose: () => void;
   onCreated: (appts: Appointment[]) => void;
+  onUpdated: (appt: Appointment) => void;
 }) {
   const router = useRouter();
-  const [customerId, setCustomerId] = useState("");
-  const [serviceId, setServiceId] = useState("");
-  const [startAt, setStartAt] = useState("");
-  const [duration, setDuration] = useState("30");
-  const [price, setPrice] = useState("");
-  const [notes, setNotes] = useState("");
+  const isEdit = !!editing;
+  const [customerId, setCustomerId] = useState(editing?.customer_id ?? "");
+  const [serviceId, setServiceId] = useState(editing?.service_id ?? "");
+  const [startAt, setStartAt] = useState(
+    editing
+      ? isoToLocalInput(editing.start_at)
+      : initialDate
+        ? `${initialDate}T09:00`
+        : "",
+  );
+  const [duration, setDuration] = useState(String(editing?.duration_min ?? 30));
+  const [price, setPrice] = useState(
+    editing?.price != null ? String(editing.price) : "",
+  );
+  const [notes, setNotes] = useState(editing?.notes ?? "");
   const [repeat, setRepeat] = useState<RecurrenceType>("none");
   const [repeatCount, setRepeatCount] = useState("4");
-  const [packageId, setPackageId] = useState("");
-  const [staffId, setStaffId] = useState("");
+  const [packageId, setPackageId] = useState(editing?.package_id ?? "");
+  const [staffId, setStaffId] = useState(editing?.staff_id ?? "");
   const [loading, setLoading] = useState(false);
 
   // Seçili müşterinin kullanılabilir paketleri.
@@ -458,8 +558,8 @@ function AppointmentModal({
         return;
       }
     }
-    // Paket kullanılıyorsa kalan seanstan fazla randevu oluşturulamaz.
-    if (packageId) {
+    // Paket kullanılıyorsa kalan seanstan fazla randevu oluşturulamaz (yeni kayıtta).
+    if (packageId && !isEdit) {
       const pkg = customerPackages.find((p) => p.id === packageId);
       if (pkg && count > pkg.remaining) {
         toast.error(
@@ -471,6 +571,36 @@ function AppointmentModal({
     setLoading(true);
     const supabase = createClient();
 
+    // Düzenleme: tek randevuyu güncelle.
+    if (isEdit && editing) {
+      const { data, error } = await supabase
+        .from("appointments")
+        .update({
+          customer_id: customerId,
+          service_id: serviceId || null,
+          package_id: packageId || null,
+          staff_id: staffId || null,
+          start_at: new Date(startAt).toISOString(),
+          duration_min: durationNum,
+          price: price.trim() === "" ? null : Number(price),
+          notes: notes.trim() || null,
+        })
+        .eq("id", editing.id)
+        .select(APPT_SELECT)
+        .single();
+      if (error) {
+        toast.error("Randevu güncellenemedi", { description: error.message });
+        setLoading(false);
+        return;
+      }
+      toast.success("Randevu güncellendi");
+      router.refresh();
+      onUpdated(data as unknown as Appointment);
+      return;
+    }
+
+    // Yeni: (tekrarlıysa) ortak seri kimliğiyle N satır ekle.
+    const gid = count > 1 ? crypto.randomUUID() : null;
     const dates = buildRecurringDates(new Date(startAt), repeat, count);
     const rows = dates.map((d) => ({
       organization_id: orgId,
@@ -478,6 +608,7 @@ function AppointmentModal({
       service_id: serviceId || null,
       package_id: packageId || null,
       staff_id: staffId || null,
+      recurrence_group_id: gid,
       start_at: d.toISOString(),
       duration_min: durationNum,
       price: price.trim() === "" ? null : Number(price),
@@ -487,9 +618,7 @@ function AppointmentModal({
     const { data, error } = await supabase
       .from("appointments")
       .insert(rows)
-      .select(
-        "id, start_at, duration_min, status, price, notes, customer_id, service_id, package_id, staff_id, customers(name, phone), services(name), staff(name)",
-      );
+      .select(APPT_SELECT);
 
     if (error) {
       toast.error("Randevu eklenemedi", { description: error.message });
@@ -521,7 +650,9 @@ function AppointmentModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Yeni randevu</h2>
+          <h2 className="text-lg font-semibold">
+            {isEdit ? "Randevu düzenle" : "Yeni randevu"}
+          </h2>
           <button
             onClick={onClose}
             className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -628,22 +759,26 @@ function AppointmentModal({
             )}
           </div>
 
-          <div className="space-y-1">
-            <label className="text-sm font-medium">Tekrar</label>
-            <select
-              value={repeat}
-              onChange={(e) => setRepeat(e.target.value as RecurrenceType)}
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {(Object.keys(RECURRENCE_LABELS) as RecurrenceType[]).map((r) => (
-                <option key={r} value={r}>
-                  {RECURRENCE_LABELS[r]}
-                </option>
-              ))}
-            </select>
-          </div>
+          {!isEdit && (
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Tekrar</label>
+              <select
+                value={repeat}
+                onChange={(e) => setRepeat(e.target.value as RecurrenceType)}
+                className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {(Object.keys(RECURRENCE_LABELS) as RecurrenceType[]).map(
+                  (r) => (
+                    <option key={r} value={r}>
+                      {RECURRENCE_LABELS[r]}
+                    </option>
+                  ),
+                )}
+              </select>
+            </div>
+          )}
 
-          {repeat !== "none" && (
+          {!isEdit && repeat !== "none" && (
             <div className="space-y-1">
               <label className="text-sm font-medium">
                 Kaç kez tekrarlansın?
@@ -715,7 +850,7 @@ function AppointmentModal({
             ) : (
               <Save className="h-4 w-4" />
             )}
-            Kaydet
+            {isEdit ? "Güncelle" : "Kaydet"}
           </button>
         </div>
       </div>

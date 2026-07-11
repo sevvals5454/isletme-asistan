@@ -11,7 +11,9 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { type AppointmentStatus, formatPrice } from "@/lib/appointments";
-import { TR_TZ, trStartOfMonth, trAddMonths } from "@/lib/time";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { TR_TZ, trMonthStart } from "@/lib/time";
 
 type Row = {
   status: AppointmentStatus;
@@ -30,7 +32,12 @@ type PackageRow = {
   services: { name: string } | null;
 };
 
-export default async function ReportsPage() {
+export default async function ReportsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ ym?: string }>;
+}) {
+  const { ym } = await searchParams;
   const supabase = await createClient();
 
   const [
@@ -60,9 +67,24 @@ export default async function ReportsPage() {
   }[];
 
   const now = new Date();
-  // Ay sınırları Türkiye saatine göre (sunucu UTC'de çalışsa bile).
-  const monthStart = trStartOfMonth(now);
-  const nextMonthStart = trAddMonths(now, 1);
+  // Seçili ay: ?ym=YYYY-MM (yoksa içinde bulunulan Türkiye ayı).
+  const curYm = new Intl.DateTimeFormat("en-CA", {
+    timeZone: TR_TZ,
+    year: "numeric",
+    month: "2-digit",
+  }).format(now); // "YYYY-MM"
+  const activeYm = ym && /^\d{4}-\d{2}$/.test(ym) ? ym : curYm;
+  const year = Number(activeYm.slice(0, 4));
+  const month0 = Number(activeYm.slice(5, 7)) - 1;
+
+  const monthStart = trMonthStart(year, month0);
+  const nextMonthStart = trMonthStart(year, month0 + 1);
+  const prevYm = new Date(Date.UTC(year, month0 - 1, 1))
+    .toISOString()
+    .slice(0, 7);
+  const nextYm = new Date(Date.UTC(year, month0 + 1, 1))
+    .toISOString()
+    .slice(0, 7);
 
   const thisMonth = rows.filter((r) => {
     const d = new Date(r.start_at);
@@ -158,19 +180,39 @@ export default async function ReportsPage() {
     (a, b) => b[1].revenue - a[1].revenue,
   );
 
-  const monthLabel = now.toLocaleDateString("tr-TR", {
-    timeZone: TR_TZ,
-    month: "long",
-    year: "numeric",
-  });
+  const monthLabel = new Date(Date.UTC(year, month0, 1)).toLocaleDateString(
+    "tr-TR",
+    { month: "long", year: "numeric", timeZone: "UTC" },
+  );
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Raporlar</h1>
-        <p className="text-sm text-muted-foreground">
-          {monthLabel} özeti ve genel performans
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">Raporlar</h1>
+          <p className="text-sm text-muted-foreground">
+            {monthLabel} özeti ve genel performans
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/reports?ym=${prevYm}`}
+            className="rounded-lg border p-1.5 hover:bg-muted"
+            aria-label="Önceki ay"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Link>
+          <div className="min-w-[130px] text-center text-sm font-medium">
+            {monthLabel}
+          </div>
+          <Link
+            href={`/reports?ym=${nextYm}`}
+            className="rounded-lg border p-1.5 hover:bg-muted"
+            aria-label="Sonraki ay"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Link>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

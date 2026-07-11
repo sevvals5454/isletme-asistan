@@ -7,7 +7,13 @@ import {
   isPackageUsable,
 } from "@/lib/packages";
 
-export default async function AppointmentsPage() {
+export default async function AppointmentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ date?: string }>;
+}) {
+  const { date } = await searchParams;
+  const openNewAt = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : undefined;
   const supabase = await createClient();
 
   const { data: membership } = await supabase
@@ -29,7 +35,7 @@ export default async function AppointmentsPage() {
     supabase
       .from("appointments")
       .select(
-        "id, start_at, duration_min, status, price, notes, customer_id, service_id, package_id, staff_id, customers(name, phone), services(name), staff(name)",
+        "id, start_at, duration_min, status, price, notes, customer_id, service_id, package_id, staff_id, recurrence_group_id, customers(name, phone), services(name), staff(name)",
       )
       .order("start_at", { ascending: false }),
     supabase
@@ -97,6 +103,7 @@ export default async function AppointmentsPage() {
       hours={(hours ?? []) as never}
       closedDays={((closedDays ?? []) as { date: string }[]).map((d) => d.date)}
       orgName={org?.name ?? ""}
+      openNewAt={openNewAt}
     />
   );
 }

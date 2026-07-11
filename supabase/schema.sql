@@ -228,9 +228,12 @@ create table if not exists public.appointments (
   price numeric(10, 2) check (price is null or price >= 0),
   notes text,
   reminder_sent_at timestamptz,
+  recurrence_group_id uuid,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+create index if not exists idx_appointments_recurrence on public.appointments(recurrence_group_id);
 
 create index if not exists idx_appointments_org_date on public.appointments(organization_id, start_at desc);
 create index if not exists idx_appointments_customer on public.appointments(customer_id);
