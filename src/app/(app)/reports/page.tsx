@@ -6,6 +6,8 @@ import {
   Scissors,
   Users,
   Banknote,
+  TrendingDown,
+  Scale,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { type AppointmentStatus, formatPrice } from "@/lib/appointments";
@@ -31,8 +33,12 @@ type PackageRow = {
 export default async function ReportsPage() {
   const supabase = await createClient();
 
-  const [{ data }, { data: packageData }, { data: paymentData }] =
-    await Promise.all([
+  const [
+    { data },
+    { data: packageData },
+    { data: paymentData },
+    { data: expenseData },
+  ] = await Promise.all([
       supabase
         .from("appointments")
         .select(
@@ -42,11 +48,16 @@ export default async function ReportsPage() {
         .from("customer_packages")
         .select("type, price, purchased_at, expires_at, services(name)"),
       supabase.from("payments").select("amount, paid_at"),
+      supabase.from("expenses").select("amount, spent_at"),
     ]);
 
   const rows = (data ?? []) as unknown as Row[];
   const packageRows = (packageData ?? []) as unknown as PackageRow[];
   const paymentRows = (paymentData ?? []) as { amount: number; paid_at: string }[];
+  const expenseRows = (expenseData ?? []) as {
+    amount: number;
+    spent_at: string;
+  }[];
 
   const now = new Date();
   // Ay sınırları Türkiye saatine göre (sunucu UTC'de çalışsa bile).
@@ -89,6 +100,15 @@ export default async function ReportsPage() {
       return d >= monthStart && d < nextMonthStart;
     })
     .reduce((s, p) => s + (p.amount ?? 0), 0);
+
+  // Bu ay gider + net (gelir tahmini - gider).
+  const monthExpenses = expenseRows
+    .filter((e) => {
+      const d = new Date(e.spent_at);
+      return d >= monthStart && d < nextMonthStart;
+    })
+    .reduce((s, e) => s + (e.amount ?? 0), 0);
+  const monthNet = monthRevenue - monthExpenses;
   const monthCompleted = thisMonth.filter(
     (r) => r.status === "completed",
   ).length;
@@ -163,6 +183,16 @@ export default async function ReportsPage() {
           icon={<Banknote className="h-5 w-5" />}
           label="Bu ay tahsilat (defter)"
           value={formatPrice(monthCollected)}
+        />
+        <StatCard
+          icon={<TrendingDown className="h-5 w-5" />}
+          label="Bu ay gider"
+          value={formatPrice(monthExpenses)}
+        />
+        <StatCard
+          icon={<Scale className="h-5 w-5" />}
+          label="Net (gelir − gider)"
+          value={formatPrice(monthNet)}
         />
         <StatCard
           icon={<CalendarCheck className="h-5 w-5" />}

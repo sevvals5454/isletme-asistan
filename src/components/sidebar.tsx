@@ -10,6 +10,7 @@ import {
   CalendarDays,
   Bell,
   BarChart3,
+  TrendingDown,
   Send,
   LogOut,
   Sparkles,
@@ -27,6 +28,7 @@ const navItems = [
   { href: "/calendar", label: "Takvim", icon: CalendarDays },
   { href: "/reminders", label: "Hatırlatmalar", icon: Bell },
   { href: "/reports", label: "Raporlar", icon: BarChart3 },
+  { href: "/expenses", label: "Giderler", icon: TrendingDown },
   { href: "/messages/bulk", label: "Toplu Mesaj", icon: Send },
   { href: "/settings", label: "Ayarlar", icon: Settings },
 ];
