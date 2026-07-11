@@ -2,7 +2,16 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Calendar, Loader2, Save, X, Trash2, MessageCircle } from "lucide-react";
+import {
+  Plus,
+  Calendar,
+  Loader2,
+  Save,
+  X,
+  Trash2,
+  MessageCircle,
+  RotateCcw,
+} from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -18,6 +27,7 @@ import {
 import { whatsAppReminderUrl, buildReminderMessage } from "@/lib/phone";
 import { trStartOfDay, trStartOfWeek, addDays } from "@/lib/time";
 import { availabilityWarning, type DayHours } from "@/lib/hours";
+import { renderTemplate, DEFAULT_TEMPLATES } from "@/lib/templates";
 
 type Appointment = {
   id: string;
@@ -63,6 +73,7 @@ export function AppointmentsView({
   staff,
   hours,
   closedDays,
+  orgName,
 }: {
   orgId: string;
   initialAppointments: Appointment[];
@@ -72,6 +83,7 @@ export function AppointmentsView({
   staff: StaffOption[];
   hours: DayHours[];
   closedDays: string[];
+  orgName: string;
 }) {
   const router = useRouter();
   const [appointments, setAppointments] =
@@ -273,6 +285,28 @@ export function AppointmentsView({
                           </a>
                         ) : null;
                       })()}
+                      {a.status === "no_show" &&
+                        (() => {
+                          const url = whatsAppReminderUrl(
+                            a.customers?.phone,
+                            renderTemplate(DEFAULT_TEMPLATES.makeup_offer, {
+                              ad: a.customers?.name ?? "",
+                              isletme: orgName,
+                            }),
+                          );
+                          return url ? (
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="rounded-md p-1.5 text-muted-foreground hover:bg-amber-100 hover:text-amber-700 dark:hover:bg-amber-900/30 dark:hover:text-amber-400"
+                              aria-label="Telafi mesajı gönder"
+                              title="Telafi / gelemedi mesajı gönder"
+                            >
+                              <RotateCcw className="h-4 w-4" />
+                            </a>
+                          ) : null;
+                        })()}
                       <button
                         onClick={() => deleteAppointment(a)}
                         className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"

@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { MessageCircle, Check, Users } from "lucide-react";
+import { MessageCircle, Check, Users, Copy } from "lucide-react";
+import { toast } from "sonner";
 import {
   toWhatsAppNumber,
   whatsAppReminderUrl,
@@ -104,6 +105,27 @@ export function BulkMessage({
           <p className="text-xs text-muted-foreground">
             <code className="rounded bg-muted px-1">{"{ad}"}</code> yazdığın yere
             müşterinin adı gelir. İmza otomatik eklenir: {orgName || "—"}
+          </p>
+          <button
+            onClick={async () => {
+              const text =
+                (orgName ? fillTemplate(template, "").trim() : template) +
+                (orgName ? `\n\n${orgName}` : "");
+              try {
+                await navigator.clipboard.writeText(text.trim());
+                toast.success("Mesaj kopyalandı — WhatsApp duyuru grubuna yapıştır");
+              } catch {
+                toast.error("Kopyalanamadı");
+              }
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium hover:bg-muted"
+          >
+            <Copy className="h-3.5 w-3.5" />
+            Duyuru grubu için kopyala
+          </button>
+          <p className="text-xs text-muted-foreground">
+            Grup mesajında kişiye özel {"{ad}"} kullanma — kopyalanan metinde boş
+            bırakılır.
           </p>
         </div>
 

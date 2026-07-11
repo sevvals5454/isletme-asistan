@@ -24,6 +24,7 @@ export default async function AppointmentsPage() {
     { data: staff },
     { data: hours },
     { data: closedDays },
+    { data: org },
   ] = await Promise.all([
     supabase
       .from("appointments")
@@ -59,6 +60,7 @@ export default async function AppointmentsPage() {
       .from("business_hours")
       .select("weekday, is_open, open_time, close_time"),
     supabase.from("closed_days").select("date"),
+    supabase.from("organizations").select("name").single(),
   ]);
 
   // Paketlerin kalan seansını tamamlanmış randevulardan hesapla;
@@ -94,6 +96,7 @@ export default async function AppointmentsPage() {
       staff={staff ?? []}
       hours={(hours ?? []) as never}
       closedDays={((closedDays ?? []) as { date: string }[]).map((d) => d.date)}
+      orgName={org?.name ?? ""}
     />
   );
 }
