@@ -26,10 +26,15 @@ const tables = [
   "organizations",
   "organization_members",
   "customers",
-  "messages",
-  "ai_logs",
   "services",
   "appointments",
+  "customer_packages",
+  "makeups",
+  "staff",
+  "business_hours",
+  "closed_days",
+  "payments",
+  "expenses",
 ];
 
 let anyExists = false;
