@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -43,11 +43,7 @@ export function Sidebar({
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-
-  // Sayfa değişince mobil menüyü kapat.
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
+  // Not: mobil menü her nav link tıklamasında onClick ile zaten kapanıyor.
 
   // Önek çakışmasında (örn. /messages vs /messages/bulk) en uzun eşleşen aktif.
   const activeHref = navItems
