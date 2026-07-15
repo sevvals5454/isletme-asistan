@@ -537,6 +537,11 @@ drop policy if exists "payments_insert" on public.payments;
 create policy "payments_insert" on public.payments
   for insert with check (organization_id in (select public.user_org_ids()));
 
+drop policy if exists "payments_update" on public.payments;
+create policy "payments_update" on public.payments
+  for update using (organization_id in (select public.user_org_ids()))
+  with check (organization_id in (select public.user_org_ids()));
+
 drop policy if exists "payments_delete" on public.payments;
 create policy "payments_delete" on public.payments
   for delete using (organization_id in (select public.user_org_ids()));
@@ -567,6 +572,11 @@ create policy "expenses_select" on public.expenses
 drop policy if exists "expenses_insert" on public.expenses;
 create policy "expenses_insert" on public.expenses
   for insert with check (organization_id in (select public.user_org_ids()));
+
+drop policy if exists "expenses_update" on public.expenses;
+create policy "expenses_update" on public.expenses
+  for update using (organization_id in (select public.user_org_ids()))
+  with check (organization_id in (select public.user_org_ids()));
 
 drop policy if exists "expenses_delete" on public.expenses;
 create policy "expenses_delete" on public.expenses
