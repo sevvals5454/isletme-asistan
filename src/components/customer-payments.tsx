@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus, Trash2, Check, X } from "lucide-react";
+import { Loader2, Plus, Trash2, Check, X, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { formatPrice } from "@/lib/appointments";
@@ -25,6 +25,7 @@ export function CustomerPayments({
   const router = useRouter();
   const [payments, setPayments] = useState<Payment[]>(initialPayments);
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<Payment | null>(null);
 
   const total = payments.reduce((s, p) => s + p.amount, 0);
 
@@ -64,27 +65,46 @@ export function CustomerPayments({
                     {p.note ? ` · ${p.note}` : ""}
                   </div>
                 </div>
-                <button
-                  onClick={() => remove(p)}
-                  className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                  aria-label="Sil"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    onClick={() => {
+                      setEditing(p);
+                      setAdding(false);
+                    }}
+                    className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    aria-label="Düzenle"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => remove(p)}
+                    className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    aria-label="Sil"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
         </>
       )}
 
-      {adding ? (
+      {adding || editing ? (
         <div className="rounded-lg border p-1">
           <PaymentForm
             orgId={orgId}
             customerId={customerId}
-            onDone={(created) => {
-              if (created) setPayments((prev) => [created, ...prev]);
+            editing={editing}
+            onDone={(result, mode) => {
+              if (result && mode === "created")
+                setPayments((prev) => [result, ...prev]);
+              if (result && mode === "updated")
+                setPayments((prev) =>
+                  prev.map((x) => (x.id === result.id ? result : x)),
+                );
               setAdding(false);
+              setEditing(null);
             }}
           />
         </div>
@@ -104,16 +124,21 @@ export function CustomerPayments({
 function PaymentForm({
   orgId,
   customerId,
+  editing,
   onDone,
 }: {
   orgId: string;
   customerId: string;
-  onDone: (result: Payment | null) => void;
+  editing?: Payment | null;
+  onDone: (result: Payment | null, mode?: "created" | "updated") => void;
 }) {
   const router = useRouter();
-  const [amount, setAmount] = useState("");
-  const [method, setMethod] = useState<PaymentMethod>("cash");
-  const [note, setNote] = useState("");
+  const isEdit = !!editing;
+  const [amount, setAmount] = useState(
+    editing ? String(editing.amount) : "",
+  );
+  const [method, setMethod] = useState<PaymentMethod>(editing?.method ?? "cash");
+  const [note, setNote] = useState(editing?.note ?? "");
   const [loading, setLoading] = useState(false);
 
   async function save() {
@@ -124,15 +149,29 @@ function PaymentForm({
     }
     setLoading(true);
     const supabase = createClient();
+    const payload = { amount: amt, method, note: note.trim() || null };
+
+    if (isEdit && editing) {
+      const { data, error } = await supabase
+        .from("payments")
+        .update(payload)
+        .eq("id", editing.id)
+        .select("id, customer_id, amount, method, note, paid_at")
+        .single();
+      if (error) {
+        toast.error("Güncellenemedi", { description: error.message });
+        setLoading(false);
+        return;
+      }
+      toast.success("Ödeme güncellendi");
+      router.refresh();
+      onDone(data as Payment, "updated");
+      return;
+    }
+
     const { data, error } = await supabase
       .from("payments")
-      .insert({
-        organization_id: orgId,
-        customer_id: customerId,
-        amount: amt,
-        method,
-        note: note.trim() || null,
-      })
+      .insert({ organization_id: orgId, customer_id: customerId, ...payload })
       .select("id, customer_id, amount, method, note, paid_at")
       .single();
     if (error) {
@@ -142,7 +181,7 @@ function PaymentForm({
     }
     toast.success("Ödeme eklendi");
     router.refresh();
-    onDone(data as Payment);
+    onDone(data as Payment, "created");
   }
 
   return (
@@ -201,7 +240,7 @@ function PaymentForm({
           ) : (
             <Check className="h-4 w-4" />
           )}
-          Kaydet
+          {isEdit ? "Güncelle" : "Kaydet"}
         </button>
       </div>
     </div>

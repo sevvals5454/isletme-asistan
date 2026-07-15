@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { formatTurkishPhone, isValidTurkishMobile } from "@/lib/phone";
@@ -15,6 +15,7 @@ type Customer = {
   notes: string | null;
   kvkk_consent?: boolean | null;
   staff_id?: string | null;
+  tags?: string[] | null;
 };
 
 export function CustomerForm({
@@ -33,9 +34,25 @@ export function CustomerForm({
   const [notes, setNotes] = useState(customer?.notes ?? "");
   const [kvkk, setKvkk] = useState(customer?.kvkk_consent ?? false);
   const [staffId, setStaffId] = useState(customer?.staff_id ?? "");
+  const [tags, setTags] = useState<string[]>(customer?.tags ?? []);
+  const [tagInput, setTagInput] = useState("");
   const [loading, setLoading] = useState(false);
 
   const phoneInvalid = phone.trim() !== "" && !isValidTurkishMobile(phone);
+
+  function addTag(raw: string) {
+    const t = raw.trim().toLowerCase();
+    if (t && !tags.includes(t)) setTags((prev) => [...prev, t]);
+    setTagInput("");
+  }
+  function onTagKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      addTag(tagInput);
+    } else if (e.key === "Backspace" && !tagInput && tags.length) {
+      setTags((prev) => prev.slice(0, -1));
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -59,6 +76,7 @@ export function CustomerForm({
           email: email || null,
           notes: notes || null,
           staff_id: staffId || null,
+          tags,
           kvkk_consent: kvkk,
           // Onay yeni verildiyse zaman damgası bas; kaldırıldıysa temizle
           ...(consentGiven
@@ -99,6 +117,7 @@ export function CustomerForm({
           email: email || null,
           notes: notes || null,
           staff_id: staffId || null,
+          tags,
           kvkk_consent: kvkk,
           kvkk_consent_at: kvkk ? new Date().toISOString() : null,
         })
@@ -202,6 +221,43 @@ export function CustomerForm({
             className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             placeholder="Müşteri hakkında önemli notlar, tercihler, alerjiler..."
           />
+        </div>
+
+        <div className="space-y-2 md:col-span-2">
+          <label htmlFor="tags" className="text-sm font-medium">
+            Etiketler
+          </label>
+          <div className="flex flex-wrap items-center gap-1.5 rounded-lg border bg-background px-2 py-1.5">
+            {tags.map((t) => (
+              <span
+                key={t}
+                className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs"
+              >
+                {t}
+                <button
+                  type="button"
+                  onClick={() => setTags((prev) => prev.filter((x) => x !== t))}
+                  aria-label={`${t} etiketini kaldır`}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+            <input
+              id="tags"
+              type="text"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={onTagKeyDown}
+              onBlur={() => tagInput && addTag(tagInput)}
+              placeholder={tags.length ? "" : "vip, yeni… (Enter ile ekle)"}
+              className="min-w-[120px] flex-1 bg-transparent px-1 py-0.5 text-sm outline-none"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Toplu mesajda segment olarak kullanılır. Enter veya virgülle ekle.
+          </p>
         </div>
       </div>
 

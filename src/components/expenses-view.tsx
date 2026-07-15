@@ -2,7 +2,15 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus, Trash2, Check, X, TrendingDown } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  Trash2,
+  Check,
+  X,
+  TrendingDown,
+  Pencil,
+} from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { formatPrice } from "@/lib/appointments";
@@ -23,6 +31,7 @@ export function ExpensesView({
   const router = useRouter();
   const [expenses, setExpenses] = useState<Expense[]>(initialExpenses);
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<Expense | null>(null);
 
   const monthTotal = useMemo(() => {
     const start = trStartOfMonth();
@@ -63,20 +72,26 @@ export function ExpensesView({
         </div>
       </div>
 
-      {adding ? (
+      {adding || editing ? (
         <div className="rounded-xl border bg-card p-2">
           <ExpenseForm
             orgId={orgId}
-            onDone={(created) => {
-              if (created)
-                setExpenses((prev) =>
-                  [created, ...prev].sort(
+            editing={editing}
+            onDone={(result, mode) => {
+              if (result)
+                setExpenses((prev) => {
+                  const next =
+                    mode === "updated"
+                      ? prev.map((x) => (x.id === result.id ? result : x))
+                      : [result, ...prev];
+                  return next.sort(
                     (a, b) =>
                       new Date(b.spent_at).getTime() -
                       new Date(a.spent_at).getTime(),
-                  ),
-                );
+                  );
+                });
               setAdding(false);
+              setEditing(null);
             }}
           />
         </div>
@@ -113,13 +128,25 @@ export function ExpensesView({
                     {e.note ? ` · ${e.note}` : ""}
                   </div>
                 </div>
-                <button
-                  onClick={() => remove(e)}
-                  className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                  aria-label="Sil"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    onClick={() => {
+                      setEditing(e);
+                      setAdding(false);
+                    }}
+                    className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    aria-label="Düzenle"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => remove(e)}
+                    className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    aria-label="Sil"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -131,16 +158,23 @@ export function ExpensesView({
 
 function ExpenseForm({
   orgId,
+  editing,
   onDone,
 }: {
   orgId: string;
-  onDone: (result: Expense | null) => void;
+  editing?: Expense | null;
+  onDone: (result: Expense | null, mode?: "created" | "updated") => void;
 }) {
   const router = useRouter();
-  const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState<ExpenseCategory>("rent");
-  const [spentAt, setSpentAt] = useState(trDateKey(new Date()));
-  const [note, setNote] = useState("");
+  const isEdit = !!editing;
+  const [amount, setAmount] = useState(editing ? String(editing.amount) : "");
+  const [category, setCategory] = useState<ExpenseCategory>(
+    editing?.category ?? "rent",
+  );
+  const [spentAt, setSpentAt] = useState(
+    editing ? trDateKey(new Date(editing.spent_at)) : trDateKey(new Date()),
+  );
+  const [note, setNote] = useState(editing?.note ?? "");
   const [loading, setLoading] = useState(false);
 
   async function save() {
@@ -151,15 +185,34 @@ function ExpenseForm({
     }
     setLoading(true);
     const supabase = createClient();
+    const payload = {
+      amount: amt,
+      category,
+      note: note.trim() || null,
+      spent_at: spentAt ? new Date(spentAt).toISOString() : undefined,
+    };
+
+    if (isEdit && editing) {
+      const { data, error } = await supabase
+        .from("expenses")
+        .update(payload)
+        .eq("id", editing.id)
+        .select("id, amount, category, note, spent_at")
+        .single();
+      if (error) {
+        toast.error("Güncellenemedi", { description: error.message });
+        setLoading(false);
+        return;
+      }
+      toast.success("Gider güncellendi");
+      router.refresh();
+      onDone(data as Expense, "updated");
+      return;
+    }
+
     const { data, error } = await supabase
       .from("expenses")
-      .insert({
-        organization_id: orgId,
-        amount: amt,
-        category,
-        note: note.trim() || null,
-        spent_at: spentAt ? new Date(spentAt).toISOString() : undefined,
-      })
+      .insert({ organization_id: orgId, ...payload })
       .select("id, amount, category, note, spent_at")
       .single();
     if (error) {
@@ -169,7 +222,7 @@ function ExpenseForm({
     }
     toast.success("Gider eklendi");
     router.refresh();
-    onDone(data as Expense);
+    onDone(data as Expense, "created");
   }
 
   return (
@@ -239,7 +292,7 @@ function ExpenseForm({
           ) : (
             <Check className="h-4 w-4" />
           )}
-          Kaydet
+          {isEdit ? "Güncelle" : "Kaydet"}
         </button>
       </div>
     </div>

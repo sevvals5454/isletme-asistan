@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus, Trash2, Check, X, Wallet } from "lucide-react";
+import { Loader2, Plus, Trash2, Check, X, Wallet, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { formatPrice } from "@/lib/appointments";
@@ -53,6 +53,7 @@ export function CustomerPackages({
   const router = useRouter();
   const [packages, setPackages] = useState<PackageWithUsage[]>(initialPackages);
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<PackageWithUsage | null>(null);
 
   async function deletePackage(pkg: PackageWithUsage) {
     if (!confirm(`"${pkg.name}" paketini silmek istiyor musun?`)) return;
@@ -105,6 +106,10 @@ export function CustomerPackages({
                 pkg={p}
                 serviceName={serviceName(p.service_id)}
                 onPaid={() => markPaid(p)}
+                onEdit={() => {
+                  setEditing(p);
+                  setAdding(false);
+                }}
                 onDelete={() => deletePackage(p)}
               />
             ) : (
@@ -112,6 +117,10 @@ export function CustomerPackages({
                 key={p.id}
                 pkg={p}
                 serviceName={serviceName(p.service_id)}
+                onEdit={() => {
+                  setEditing(p);
+                  setAdding(false);
+                }}
                 onDelete={() => deletePackage(p)}
               />
             ),
@@ -119,15 +128,22 @@ export function CustomerPackages({
         </ul>
       )}
 
-      {adding ? (
+      {adding || editing ? (
         <div className="rounded-lg border p-1">
           <PackageForm
             orgId={orgId}
             customerId={customerId}
             services={services}
-            onDone={(created) => {
-              if (created) setPackages((prev) => [created, ...prev]);
+            editing={editing}
+            onDone={(result, mode) => {
+              if (result && mode === "created")
+                setPackages((prev) => [result, ...prev]);
+              if (result && mode === "updated")
+                setPackages((prev) =>
+                  prev.map((x) => (x.id === result.id ? result : x)),
+                );
               setAdding(false);
+              setEditing(null);
             }}
           />
         </div>
@@ -147,10 +163,12 @@ export function CustomerPackages({
 function SessionRow({
   pkg,
   serviceName,
+  onEdit,
   onDelete,
 }: {
   pkg: PackageWithUsage;
   serviceName: string;
+  onEdit: () => void;
   onDelete: () => void;
 }) {
   const remaining = remainingSessions(pkg);
@@ -176,6 +194,13 @@ function SessionRow({
           {expired ? "Süresi doldu" : `${remaining}/${pkg.total_sessions} kaldı`}
         </span>
         <button
+          onClick={onEdit}
+          className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+          aria-label="Düzenle"
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
+        <button
           onClick={onDelete}
           className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
           aria-label="Sil"
@@ -191,11 +216,13 @@ function MonthlyRow({
   pkg,
   serviceName,
   onPaid,
+  onEdit,
   onDelete,
 }: {
   pkg: PackageWithUsage;
   serviceName: string;
   onPaid: () => void;
+  onEdit: () => void;
   onDelete: () => void;
 }) {
   const due = monthlyDueStatus(pkg);
@@ -228,6 +255,13 @@ function MonthlyRow({
           Ödendi
         </button>
         <button
+          onClick={onEdit}
+          className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+          aria-label="Düzenle"
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
+        <button
           onClick={onDelete}
           className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
           aria-label="Sil"
@@ -243,21 +277,37 @@ function PackageForm({
   orgId,
   customerId,
   services,
+  editing,
   onDone,
 }: {
   orgId: string;
   customerId: string;
   services: ServiceOption[];
-  onDone: (result: PackageWithUsage | null) => void;
+  editing?: PackageWithUsage | null;
+  onDone: (
+    result: PackageWithUsage | null,
+    mode?: "created" | "updated",
+  ) => void;
 }) {
   const router = useRouter();
-  const [type, setType] = useState<PackageType>("session");
-  const [name, setName] = useState("");
-  const [serviceId, setServiceId] = useState("");
-  const [totalSessions, setTotalSessions] = useState("10");
-  const [price, setPrice] = useState("");
-  const [expiresAt, setExpiresAt] = useState("");
-  const [billingDay, setBillingDay] = useState("1");
+  const isEdit = !!editing;
+  const [type, setType] = useState<PackageType>(editing?.type ?? "session");
+  const [name, setName] = useState(editing?.name ?? "");
+  const [serviceId, setServiceId] = useState(editing?.service_id ?? "");
+  const [totalSessions, setTotalSessions] = useState(
+    editing?.total_sessions != null ? String(editing.total_sessions) : "10",
+  );
+  const [price, setPrice] = useState(
+    editing?.price != null ? String(editing.price) : "",
+  );
+  const [expiresAt, setExpiresAt] = useState(
+    editing?.expires_at ? editing.expires_at.slice(0, 10) : "",
+  );
+  const [billingDay, setBillingDay] = useState(
+    editing?.next_payment_at
+      ? String(Number(editing.next_payment_at.slice(8, 10)))
+      : "1",
+  );
   const [loading, setLoading] = useState(false);
 
   async function save() {
@@ -286,27 +336,47 @@ function PackageForm({
 
     setLoading(true);
     const supabase = createClient();
+    const SELECT =
+      "id, customer_id, service_id, name, type, total_sessions, price, purchased_at, next_payment_at, expires_at, notes";
+    const payload = {
+      service_id: serviceId || null,
+      name: name.trim(),
+      type,
+      total_sessions: total,
+      price: price.trim() === "" ? null : Number(price),
+      next_payment_at: nextPayment,
+      expires_at:
+        type === "session" && expiresAt
+          ? new Date(expiresAt).toISOString()
+          : null,
+    };
+
+    if (isEdit && editing) {
+      const { data, error } = await supabase
+        .from("customer_packages")
+        .update(payload)
+        .eq("id", editing.id)
+        .select(SELECT)
+        .single();
+      if (error) {
+        toast.error("Güncellenemedi", { description: error.message });
+        setLoading(false);
+        return;
+      }
+      toast.success("Güncellendi");
+      router.refresh();
+      onDone(
+        { ...(data as PackageWithUsage), used_sessions: editing.used_sessions },
+        "updated",
+      );
+      return;
+    }
+
     const { data, error } = await supabase
       .from("customer_packages")
-      .insert({
-        organization_id: orgId,
-        customer_id: customerId,
-        service_id: serviceId || null,
-        name: name.trim(),
-        type,
-        total_sessions: total,
-        price: price.trim() === "" ? null : Number(price),
-        next_payment_at: nextPayment,
-        expires_at:
-          type === "session" && expiresAt
-            ? new Date(expiresAt).toISOString()
-            : null,
-      })
-      .select(
-        "id, customer_id, service_id, name, type, total_sessions, price, purchased_at, next_payment_at, expires_at, notes",
-      )
+      .insert({ organization_id: orgId, customer_id: customerId, ...payload })
+      .select(SELECT)
       .single();
-
     if (error) {
       toast.error("Eklenemedi", { description: error.message });
       setLoading(false);
@@ -314,7 +384,7 @@ function PackageForm({
     }
     toast.success(type === "monthly" ? "Üyelik eklendi" : "Paket eklendi");
     router.refresh();
-    onDone({ ...(data as PackageWithUsage), used_sessions: 0 });
+    onDone({ ...(data as PackageWithUsage), used_sessions: 0 }, "created");
   }
 
   return (
@@ -456,7 +526,7 @@ function PackageForm({
           ) : (
             <Check className="h-4 w-4" />
           )}
-          Kaydet
+          {isEdit ? "Güncelle" : "Kaydet"}
         </button>
       </div>
     </div>
