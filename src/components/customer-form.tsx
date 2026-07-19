@@ -16,6 +16,7 @@ type Customer = {
   kvkk_consent?: boolean | null;
   staff_id?: string | null;
   tags?: string[] | null;
+  birth_date?: string | null;
 };
 
 export function CustomerForm({
@@ -34,6 +35,7 @@ export function CustomerForm({
   const [notes, setNotes] = useState(customer?.notes ?? "");
   const [kvkk, setKvkk] = useState(customer?.kvkk_consent ?? false);
   const [staffId, setStaffId] = useState(customer?.staff_id ?? "");
+  const [birthDate, setBirthDate] = useState(customer?.birth_date ?? "");
   const [tags, setTags] = useState<string[]>(customer?.tags ?? []);
   const [tagInput, setTagInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -76,6 +78,7 @@ export function CustomerForm({
           email: email || null,
           notes: notes || null,
           staff_id: staffId || null,
+          birth_date: birthDate || null,
           tags,
           kvkk_consent: kvkk,
           // Onay yeni verildiyse zaman damgası bas; kaldırıldıysa temizle
@@ -117,6 +120,7 @@ export function CustomerForm({
           email: email || null,
           notes: notes || null,
           staff_id: staffId || null,
+          birth_date: birthDate || null,
           tags,
           kvkk_consent: kvkk,
           kvkk_consent_at: kvkk ? new Date().toISOString() : null,
@@ -186,6 +190,22 @@ export function CustomerForm({
             className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             placeholder="ornek@email.com"
           />
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="birth" className="text-sm font-medium">
+            Doğum tarihi
+          </label>
+          <input
+            id="birth"
+            type="date"
+            value={birthDate}
+            onChange={(e) => setBirthDate(e.target.value)}
+            className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+          <p className="text-xs text-muted-foreground">
+            Doğum günü kutlama hatırlatması için (opsiyonel)
+          </p>
         </div>
 
         {staff.length > 0 && (

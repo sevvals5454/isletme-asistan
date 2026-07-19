@@ -19,7 +19,12 @@ import {
   type MessageKind,
 } from "@/lib/templates";
 
-export type NotificationKind = "appointment" | "payment" | "package";
+export type NotificationKind =
+  | "appointment"
+  | "payment"
+  | "package"
+  | "winback"
+  | "birthday";
 export type Severity = "info" | "warning" | "danger";
 
 export type NotificationItem = {
@@ -59,6 +64,29 @@ function msg(
   return renderTemplate(DEFAULT_TEMPLATES[kind], vars);
 }
 
+type CustomerInput = {
+  id: string;
+  name: string;
+  phone: string | null;
+  birth_date: string | null;
+};
+
+// Bir müşterinin son ziyaretinden bu yana geçen gün; ziyaret yoksa null.
+function daysSince(iso: string, now: Date): number {
+  return Math.floor((now.getTime() - new Date(iso).getTime()) / 86400000);
+}
+
+// Doğum gününe kalan gün (bu yılki/gelecekki en yakın), yoksa null.
+function daysUntilBirthday(birth: string, now: Date): number | null {
+  const b = new Date(birth);
+  if (isNaN(b.getTime())) return null;
+  const y = now.getFullYear();
+  let next = new Date(y, b.getMonth(), b.getDate());
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (next < today) next = new Date(y + 1, b.getMonth(), b.getDate());
+  return Math.round((next.getTime() - today.getTime()) / 86400000);
+}
+
 export function buildNotifications(input: {
   now: Date;
   orgName: string;
@@ -66,6 +94,10 @@ export function buildNotifications(input: {
   ibanName?: string | null;
   upcomingAppointments: ApptInput[]; // bugün, henüz geçmemiş, planlı
   packages: PkgInput[]; // tüm paketler (tür fark etmez)
+  customers?: CustomerInput[]; // geri kazanım + doğum günü için
+  lastVisit?: Map<string, string>; // customerId -> son randevu ISO
+  futureCustomerIds?: Set<string>; // gelecek randevusu olanlar (geri kazanımdan hariç)
+  winbackDays?: number; // "kaybetmek üzere" eşiği (varsayılan 21 gün)
   soonHours?: number; // "yaklaşıyor" eşiği (varsayılan 3 saat)
 }): NotificationItem[] {
   const {
@@ -75,6 +107,10 @@ export function buildNotifications(input: {
     ibanName,
     upcomingAppointments,
     packages,
+    customers = [],
+    lastVisit = new Map(),
+    futureCustomerIds = new Set(),
+    winbackDays = 21,
     soonHours = 3,
   } = input;
   const items: NotificationItem[] = [];
@@ -159,6 +195,47 @@ export function buildNotifications(input: {
       customerId: p.customer_id,
       whatsappUrl: url,
       sortKey: remaining,
+    });
+  }
+
+  // 4) Kaybetmek üzere: uzun süredir gelmeyen + gelecek randevusu olmayan müşteriler
+  for (const c of customers) {
+    const last = lastVisit.get(c.id);
+    if (!last || futureCustomerIds.has(c.id)) continue;
+    const gun = daysSince(last, now);
+    if (gun < winbackDays) continue;
+    items.push({
+      id: `winback-${c.id}`,
+      kind: "winback",
+      severity: "warning",
+      title: `${c.name} — ${gun} gündür gelmedi`,
+      detail: `Son ziyaret: ${formatTrDate(last)} · kaybetmeden ulaş`,
+      customerId: c.id,
+      whatsappUrl: whatsAppReminderUrl(
+        c.phone,
+        msg("win_back", { ad: c.name, isletme: orgName }),
+      ),
+      sortKey: -gun,
+    });
+  }
+
+  // 5) Doğum günü (bu hafta içinde)
+  for (const c of customers) {
+    if (!c.birth_date) continue;
+    const d = daysUntilBirthday(c.birth_date, now);
+    if (d == null || d > 7) continue;
+    items.push({
+      id: `bday-${c.id}`,
+      kind: "birthday",
+      severity: "info",
+      title: `${c.name} — doğum günü ${d === 0 ? "bugün 🎉" : `${d} gün sonra`}`,
+      detail: "Kutlama mesajı gönder",
+      customerId: c.id,
+      whatsappUrl: whatsAppReminderUrl(
+        c.phone,
+        msg("birthday", { ad: c.name, isletme: orgName }),
+      ),
+      sortKey: d,
     });
   }
 

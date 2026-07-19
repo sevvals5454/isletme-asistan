@@ -56,6 +56,8 @@ export default async function DashboardPage() {
     { data: packagesData },
     { data: packageUsedRows },
     { data: org },
+    { data: allCustomers },
+    { data: retentionAppts },
   ] = await Promise.all([
     supabase.from("customers").select("*", { count: "exact", head: true }),
     supabase
@@ -88,6 +90,8 @@ export default async function DashboardPage() {
       .eq("status", "completed")
       .not("package_id", "is", null),
     supabase.from("organizations").select("name, iban, iban_name").single(),
+    supabase.from("customers").select("id, name, phone, birth_date"),
+    supabase.from("appointments").select("customer_id, start_at, status"),
   ]);
 
   const today = (todayAppointments ?? []) as unknown as TodayAppointment[];
@@ -107,12 +111,38 @@ export default async function DashboardPage() {
     used_sessions: pkgUsed.get(p.id) ?? 0,
   }));
 
-  // Bildirim Merkezi: yaklaşan randevu + ödeme + paket bitme.
+  // Retention: her müşterinin son ziyareti + gelecek randevusu olanlar.
+  const lastVisit = new Map<string, string>();
+  const futureCustomerIds = new Set<string>();
+  for (const a of (retentionAppts ?? []) as {
+    customer_id: string;
+    start_at: string;
+    status: AppointmentStatus;
+  }[]) {
+    if (a.status === "cancelled") continue;
+    const t = new Date(a.start_at);
+    if (t <= now) {
+      const cur = lastVisit.get(a.customer_id);
+      if (!cur || new Date(cur) < t) lastVisit.set(a.customer_id, a.start_at);
+    } else if (a.status === "scheduled") {
+      futureCustomerIds.add(a.customer_id);
+    }
+  }
+
+  // Bildirim Merkezi: yaklaşan randevu + ödeme + paket + kaybetmek üzere + doğum günü.
   const notifications = buildNotifications({
     now,
     orgName,
     iban: org?.iban ?? null,
     ibanName: org?.iban_name ?? null,
+    customers: (allCustomers ?? []) as {
+      id: string;
+      name: string;
+      phone: string | null;
+      birth_date: string | null;
+    }[],
+    lastVisit,
+    futureCustomerIds,
     upcomingAppointments: today
       .filter((a) => a.status === "scheduled" && new Date(a.start_at) > now)
       .map((a) => ({
@@ -159,13 +189,14 @@ export default async function DashboardPage() {
         <div className="rounded-xl border bg-card p-6">
           <div className="mb-1 flex items-center gap-2">
             <Bell className="h-4 w-4" />
-            <h2 className="font-semibold">Bildirimler</h2>
+            <h2 className="font-semibold">Bugünkü aksiyonlar</h2>
             <span className="text-xs text-muted-foreground">
               ({notifications.length})
             </span>
           </div>
           <p className="mb-4 text-sm text-muted-foreground">
-            Yaklaşan randevular, ödemeler ve bitmek üzere paketler
+            Bugün ne yapmalı: yaklaşan randevu/ödeme, bitmek üzere paket,
+            kaybetmek üzere müşteriler ve doğum günleri
           </p>
           <ul className="space-y-2">
             {notifications.map((n) => (

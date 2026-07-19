@@ -35,6 +35,7 @@ create table if not exists public.customers (
   email text,
   notes text,
   tags text[] default '{}',
+  birth_date date,
   last_contact_at timestamptz,
   kvkk_consent boolean not null default false,
   kvkk_consent_at timestamptz,
@@ -603,3 +604,4 @@ alter table public.customer_packages alter column total_sessions drop not null;
 
 alter table public.customers add column if not exists staff_id uuid
   references public.staff(id) on delete set null;
+alter table public.customers add column if not exists birth_date date;
