@@ -75,14 +75,30 @@ export function BusinessHoursManager({
             <div className="w-24 font-medium">{WEEKDAY_LABELS[r.weekday]}</div>
             <button
               type="button"
+              role="switch"
+              aria-checked={r.is_open}
               onClick={() => update(r.weekday, { is_open: !r.is_open })}
-              className={
-                r.is_open
-                  ? "rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                  : "rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
-              }
+              className="inline-flex w-20 shrink-0 items-center gap-2"
+              title={r.is_open ? "Kapatmak için tıkla" : "Açmak için tıkla"}
             >
-              {r.is_open ? "Açık" : "Kapalı"}
+              <span
+                className={`relative inline-block h-5 w-9 shrink-0 rounded-full transition-colors ${
+                  r.is_open ? "bg-green-500" : "bg-muted-foreground/30"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${
+                    r.is_open ? "left-[18px]" : "left-0.5"
+                  }`}
+                />
+              </span>
+              <span
+                className={`text-xs font-medium ${
+                  r.is_open ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
+                }`}
+              >
+                {r.is_open ? "Açık" : "Kapalı"}
+              </span>
             </button>
             {r.is_open && (
               <div className="flex items-center gap-2">
