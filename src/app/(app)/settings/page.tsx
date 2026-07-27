@@ -20,7 +20,7 @@ export default async function SettingsPage() {
   const { data: membership } = await supabase
     .from("organization_members")
     .select(
-      "organization_id, role, organizations(id, name, plan, iban, iban_name, created_at)",
+      "organization_id, role, organizations(id, name, plan, iban, iban_name, google_review_url, created_at)",
     )
     .eq("user_id", user!.id)
     .single();
@@ -31,6 +31,7 @@ export default async function SettingsPage() {
     plan: string;
     iban: string | null;
     iban_name: string | null;
+    google_review_url: string | null;
     created_at: string;
   } | null;
 
@@ -74,16 +75,18 @@ export default async function SettingsPage() {
       <section className="rounded-xl border bg-card p-6">
         <div className="mb-1 flex items-center gap-2">
           <Wallet className="h-4 w-4" />
-          <h2 className="font-semibold">IBAN / Ödeme bilgisi</h2>
+          <h2 className="font-semibold">Ödeme & Değerlendirme</h2>
         </div>
         <p className="mb-4 text-sm text-muted-foreground">
-          Ödeme mesajlarında müşteriye gönderilecek IBAN
+          Ödeme mesajlarındaki IBAN ve değerlendirme mesajındaki Google yorum
+          linki
         </p>
         {org && (
           <OrgIbanForm
             orgId={org.id}
             initialIban={org.iban ?? ""}
             initialIbanName={org.iban_name ?? ""}
+            initialReviewUrl={org.google_review_url ?? ""}
           />
         )}
       </section>

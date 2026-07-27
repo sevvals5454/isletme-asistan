@@ -13,6 +13,8 @@ import {
   RotateCcw,
   Pencil,
   CalendarX,
+  Star,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
@@ -43,6 +45,8 @@ type Appointment = {
   package_id: string | null;
   staff_id: string | null;
   recurrence_group_id: string | null;
+  confirm_token: string;
+  client_response: string | null;
   customers: { name: string; phone: string | null } | null;
   services: { name: string } | null;
   staff: { name: string } | null;
@@ -56,7 +60,7 @@ function isoToLocalInput(iso: string): string {
 }
 
 const APPT_SELECT =
-  "id, start_at, duration_min, status, price, notes, customer_id, service_id, package_id, staff_id, recurrence_group_id, customers(name, phone), services(name), staff(name)";
+  "id, start_at, duration_min, status, price, notes, customer_id, service_id, package_id, staff_id, recurrence_group_id, confirm_token, client_response, customers(name, phone), services(name), staff(name)";
 
 // Saat seçimi için 07:00–22:00 arası 15 dakikalık dilimler.
 const TIME_SLOTS: string[] = (() => {
@@ -99,6 +103,8 @@ export function AppointmentsView({
   hours,
   closedDays,
   orgName,
+  reviewUrl,
+  baseUrl,
   openNewAt,
 }: {
   orgId: string;
@@ -110,6 +116,8 @@ export function AppointmentsView({
   hours: DayHours[];
   closedDays: string[];
   orgName: string;
+  reviewUrl: string;
+  baseUrl: string; // onay linki için (https://.../r/token)
   openNewAt?: string; // takvimden gelen tarih (YYYY-MM-DD) → modalı aç
 }) {
   const router = useRouter();
@@ -325,6 +333,16 @@ export function AppointmentsView({
                         </option>
                       ))}
                     </select>
+                    {a.client_response === "confirmed" && (
+                      <span className="mt-1 block text-xs font-medium text-green-600 dark:text-green-400">
+                        ✓ Onayladı
+                      </span>
+                    )}
+                    {a.client_response === "declined" && (
+                      <span className="mt-1 block text-xs font-medium text-red-600 dark:text-red-400">
+                        ✗ Gelmeyecek
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
@@ -377,6 +395,57 @@ export function AppointmentsView({
                               title="Telafi / gelemedi mesajı gönder"
                             >
                               <RotateCcw className="h-4 w-4" />
+                            </a>
+                          ) : null;
+                        })()}
+                      {a.status === "scheduled" &&
+                        (() => {
+                          const link = baseUrl
+                            ? `${baseUrl}/r/${a.confirm_token}`
+                            : "";
+                          const url = whatsAppReminderUrl(
+                            a.customers?.phone,
+                            renderTemplate(DEFAULT_TEMPLATES.confirm_request, {
+                              ad: a.customers?.name ?? "",
+                              tarih: formatWhen(a.start_at),
+                              link,
+                              isletme: orgName,
+                            }),
+                          );
+                          return url && link ? (
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="rounded-md p-1.5 text-muted-foreground hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-900/30 dark:hover:text-blue-400"
+                              aria-label="Onay linki gönder"
+                              title="Randevu onay linki gönder"
+                            >
+                              <CheckCircle2 className="h-4 w-4" />
+                            </a>
+                          ) : null;
+                        })()}
+                      {a.status === "completed" &&
+                        reviewUrl &&
+                        (() => {
+                          const url = whatsAppReminderUrl(
+                            a.customers?.phone,
+                            renderTemplate(DEFAULT_TEMPLATES.review_request, {
+                              ad: a.customers?.name ?? "",
+                              link: reviewUrl,
+                              isletme: orgName,
+                            }),
+                          );
+                          return url ? (
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="rounded-md p-1.5 text-muted-foreground hover:bg-yellow-100 hover:text-yellow-700 dark:hover:bg-yellow-900/30 dark:hover:text-yellow-400"
+                              aria-label="Değerlendirme iste"
+                              title="Değerlendirme / yorum iste"
+                            >
+                              <Star className="h-4 w-4" />
                             </a>
                           ) : null;
                         })()}

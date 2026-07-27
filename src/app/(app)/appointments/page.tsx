@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { AppointmentsView } from "@/components/appointments-view";
 import {
@@ -14,6 +15,13 @@ export default async function AppointmentsPage({
 }) {
   const { date } = await searchParams;
   const openNewAt = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : undefined;
+
+  // Onay linki için canlı taban URL (header'dan).
+  const hdrs = await headers();
+  const host = hdrs.get("host");
+  const proto = hdrs.get("x-forwarded-proto") ?? "https";
+  const baseUrl = host ? `${proto}://${host}` : "";
+
   const supabase = await createClient();
 
   const { data: membership } = await supabase
@@ -35,7 +43,7 @@ export default async function AppointmentsPage({
     supabase
       .from("appointments")
       .select(
-        "id, start_at, duration_min, status, price, notes, customer_id, service_id, package_id, staff_id, recurrence_group_id, customers(name, phone), services(name), staff(name)",
+        "id, start_at, duration_min, status, price, notes, customer_id, service_id, package_id, staff_id, recurrence_group_id, confirm_token, client_response, customers(name, phone), services(name), staff(name)",
       )
       .order("start_at", { ascending: false }),
     supabase
@@ -66,7 +74,7 @@ export default async function AppointmentsPage({
       .from("business_hours")
       .select("weekday, is_open, open_time, close_time"),
     supabase.from("closed_days").select("date"),
-    supabase.from("organizations").select("name").single(),
+    supabase.from("organizations").select("name, google_review_url").single(),
   ]);
 
   // Paketlerin kalan seansını tamamlanmış randevulardan hesapla;
@@ -103,6 +111,11 @@ export default async function AppointmentsPage({
       hours={(hours ?? []) as never}
       closedDays={((closedDays ?? []) as { date: string }[]).map((d) => d.date)}
       orgName={org?.name ?? ""}
+      reviewUrl={
+        (org as { google_review_url?: string | null } | null)
+          ?.google_review_url ?? ""
+      }
+      baseUrl={baseUrl}
       openNewAt={openNewAt}
     />
   );

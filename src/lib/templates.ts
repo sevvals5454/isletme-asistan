@@ -9,7 +9,9 @@ export type MessageKind =
   | "package_low" // paket bitmek üzere
   | "makeup_offer" // gelememe / telafi daveti
   | "win_back" // uzun süredir gelmeyen müşteri
-  | "birthday"; // doğum günü kutlaması
+  | "birthday" // doğum günü kutlaması
+  | "review_request" // değerlendirme / Google yorum daveti
+  | "confirm_request"; // randevu onay linki
 
 // {iban}: önceden hazırlanmış IBAN satırı (ör. "IBAN: TR.. — Ad Soyad") veya boş.
 export const TEMPLATE_VARIABLES = [
@@ -20,6 +22,7 @@ export const TEMPLATE_VARIABLES = [
   "paket",
   "kalan",
   "iban",
+  "link",
   "isletme",
 ] as const;
 
@@ -38,6 +41,10 @@ export const DEFAULT_TEMPLATES: Record<MessageKind, string> = {
     "Merhaba {ad}, bir süredir görüşemedik, sizi özledik! Size uygun bir gün ayarlayıp tekrar bekleriz. 💛\n\n{isletme}",
   birthday:
     "Merhaba {ad}, doğum gününüz kutlu olsun! 🎉 Nice mutlu, sağlıklı yıllara. Sizi görmek isteriz!\n\n{isletme}",
+  review_request:
+    "Merhaba {ad}, ziyaretiniz nasıldı? Görüşleriniz bizim için çok değerli. Bir dakikanızı ayırıp değerlendirir misiniz? 🙏\n{link}\n\n{isletme}",
+  confirm_request:
+    "Merhaba {ad}, {tarih} {saat} randevunuza katılımınızı onaylar mısınız? 👇\n{link}\n\n{isletme}",
 };
 
 // IBAN değişkeni için hazır satır üretir (boşsa "" döner → şablondan temizlenir).

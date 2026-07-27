@@ -10,14 +10,17 @@ export function OrgIbanForm({
   orgId,
   initialIban,
   initialIbanName,
+  initialReviewUrl,
 }: {
   orgId: string;
   initialIban: string;
   initialIbanName: string;
+  initialReviewUrl: string;
 }) {
   const router = useRouter();
   const [iban, setIban] = useState(initialIban);
   const [ibanName, setIbanName] = useState(initialIbanName);
+  const [reviewUrl, setReviewUrl] = useState(initialReviewUrl);
   const [loading, setLoading] = useState(false);
 
   async function save() {
@@ -28,6 +31,7 @@ export function OrgIbanForm({
       .update({
         iban: iban.trim() || null,
         iban_name: ibanName.trim() || null,
+        google_review_url: reviewUrl.trim() || null,
       })
       .eq("id", orgId);
     if (error) {
@@ -63,6 +67,18 @@ export function OrgIbanForm({
             className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
+      </div>
+      <div className="space-y-1">
+        <label className="text-xs text-muted-foreground">
+          Google yorum linki (değerlendirme mesajı için)
+        </label>
+        <input
+          type="url"
+          value={reviewUrl}
+          onChange={(e) => setReviewUrl(e.target.value)}
+          placeholder="https://g.page/r/..."
+          className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
       </div>
       <button
         onClick={save}

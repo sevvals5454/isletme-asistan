@@ -16,7 +16,15 @@ import {
   STATUS_STYLES,
   formatPrice,
 } from "@/lib/appointments";
-import { trStartOfDay, trStartOfWeek, addDays, formatTrTime } from "@/lib/time";
+import {
+  trStartOfDay,
+  trStartOfWeek,
+  addDays,
+  formatTrTime,
+  trDateKey,
+  formatTrDate,
+} from "@/lib/time";
+import { WEEKDAY_LABELS } from "@/lib/hours";
 import { type CustomerPackage } from "@/lib/packages";
 import {
   buildNotifications,
@@ -58,6 +66,7 @@ export default async function DashboardPage() {
     { data: org },
     { data: allCustomers },
     { data: retentionAppts },
+    { data: hoursRows },
   ] = await Promise.all([
     supabase.from("customers").select("*", { count: "exact", head: true }),
     supabase
@@ -92,6 +101,7 @@ export default async function DashboardPage() {
     supabase.from("organizations").select("name, iban, iban_name").single(),
     supabase.from("customers").select("id, name, phone, birth_date"),
     supabase.from("appointments").select("customer_id, start_at, status"),
+    supabase.from("business_hours").select("weekday, is_open"),
   ]);
 
   const today = (todayAppointments ?? []) as unknown as TodayAppointment[];
@@ -155,6 +165,36 @@ export default async function DashboardPage() {
     packages: packagesForNotif,
   });
 
+  // Bu hafta boş günler: business_hours'ta açık ama randevusuz + bugünden itibaren.
+  const openByWeekday = new Map(
+    ((hoursRows ?? []) as { weekday: number; is_open: boolean }[]).map((h) => [
+      h.weekday,
+      h.is_open,
+    ]),
+  );
+  const apptCountByDay = new Map<string, number>();
+  for (const a of (retentionAppts ?? []) as {
+    start_at: string;
+    status: AppointmentStatus;
+  }[]) {
+    if (a.status === "cancelled") continue;
+    const k = trDateKey(new Date(a.start_at));
+    apptCountByDay.set(k, (apptCountByDay.get(k) ?? 0) + 1);
+  }
+  const todayKey = trDateKey(now);
+  const emptyDays: { key: string; label: string }[] = [];
+  if (openByWeekday.size > 0) {
+    for (let i = 0; i < 7; i++) {
+      const key = trDateKey(addDays(startOfWeek, i));
+      if (key < todayKey) continue;
+      const [y, mo, dd] = key.split("-").map(Number);
+      const weekday = (new Date(Date.UTC(y, mo - 1, dd)).getUTCDay() + 6) % 7;
+      if (openByWeekday.get(weekday) !== true) continue;
+      if ((apptCountByDay.get(key) ?? 0) > 0) continue;
+      emptyDays.push({ key, label: WEEKDAY_LABELS[weekday] });
+    }
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -203,6 +243,33 @@ export default async function DashboardPage() {
               <NotificationCard key={n.id} item={n} />
             ))}
           </ul>
+        </div>
+      )}
+
+      {emptyDays.length > 0 && (
+        <div className="rounded-xl border bg-card p-6">
+          <div className="mb-1 flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
+            <h2 className="font-semibold">Bu hafta boş günler</h2>
+          </div>
+          <p className="mb-4 text-sm text-muted-foreground">
+            Açık ama hiç randevusu olmayan günler — doldurmak için randevu ekle
+            veya kampanya yap
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {emptyDays.map((d) => (
+              <Link
+                key={d.key}
+                href={`/appointments?date=${d.key}`}
+                className="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm hover:bg-muted"
+              >
+                <span className="font-medium">{d.label}</span>
+                <span className="text-xs text-muted-foreground">
+                  {formatTrDate(d.key)}
+                </span>
+              </Link>
+            ))}
+          </div>
         </div>
       )}
 
