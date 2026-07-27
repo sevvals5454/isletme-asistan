@@ -58,6 +58,18 @@ function isoToLocalInput(iso: string): string {
 const APPT_SELECT =
   "id, start_at, duration_min, status, price, notes, customer_id, service_id, package_id, staff_id, recurrence_group_id, customers(name, phone), services(name), staff(name)";
 
+// Saat seçimi için 07:00–22:00 arası 15 dakikalık dilimler.
+const TIME_SLOTS: string[] = (() => {
+  const out: string[] = [];
+  for (let h = 7; h <= 22; h++) {
+    for (const m of [0, 15, 30, 45]) {
+      if (h === 22 && m > 0) break;
+      out.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+    }
+  }
+  return out;
+})();
+
 type CustomerOption = { id: string; name: string };
 type StaffOption = { id: string; name: string };
 type ServiceOption = {
@@ -486,13 +498,16 @@ function AppointmentModal({
   const isEdit = !!editing;
   const [customerId, setCustomerId] = useState(editing?.customer_id ?? "");
   const [serviceId, setServiceId] = useState(editing?.service_id ?? "");
-  const [startAt, setStartAt] = useState(
-    editing
-      ? isoToLocalInput(editing.start_at)
-      : initialDate
-        ? `${initialDate}T09:00`
-        : "",
+  const initStart = editing
+    ? isoToLocalInput(editing.start_at)
+    : initialDate
+      ? `${initialDate}T09:00`
+      : "";
+  const [dateVal, setDateVal] = useState(initStart ? initStart.slice(0, 10) : "");
+  const [timeVal, setTimeVal] = useState(
+    initStart ? initStart.slice(11, 16) : "09:00",
   );
+  const startAt = dateVal ? `${dateVal}T${timeVal}` : "";
   const [duration, setDuration] = useState(String(editing?.duration_min ?? 30));
   const [price, setPrice] = useState(
     editing?.price != null ? String(editing.price) : "",
@@ -746,12 +761,30 @@ function AppointmentModal({
 
           <div className="space-y-1">
             <label className="text-sm font-medium">Tarih ve saat *</label>
-            <input
-              type="datetime-local"
-              value={startAt}
-              onChange={(e) => setStartAt(e.target.value)}
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="date"
+                value={dateVal}
+                onChange={(e) => setDateVal(e.target.value)}
+                className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label="Tarih"
+              />
+              <select
+                value={timeVal}
+                onChange={(e) => setTimeVal(e.target.value)}
+                className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label="Saat"
+              >
+                {(TIME_SLOTS.includes(timeVal)
+                  ? TIME_SLOTS
+                  : [timeVal, ...TIME_SLOTS]
+                ).map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
             {availWarning && (
               <p className="text-xs text-amber-600 dark:text-amber-500">
                 ⚠️ {availWarning}
