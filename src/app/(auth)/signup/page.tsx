@@ -19,7 +19,7 @@ export default function SignupPage() {
     setLoading(true);
 
     const supabase = createClient();
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -29,11 +29,25 @@ export default function SignupPage() {
     });
 
     if (error) {
-      toast.error("Kayıt başarısız", { description: error.message });
+      const msg = /already registered|already exists|registered/i.test(
+        error.message,
+      )
+        ? "Bu e-posta zaten kayıtlı. Lütfen giriş yapın veya başka bir e-posta kullanın."
+        : error.message;
+      toast.error("Kayıt başarısız", { description: msg });
       setLoading(false);
       return;
     }
 
+    // Onay kapalıysa signUp doğrudan oturum döner → panele git.
+    if (data.session) {
+      toast.success("Hesabınız oluşturuldu!");
+      router.push("/dashboard");
+      router.refresh();
+      return;
+    }
+
+    // Onay açıksa e-posta doğrulaması gerekir.
     toast.success("Kayıt başarılı", {
       description: "E-postanıza gelen onay linkine tıklayın.",
     });
