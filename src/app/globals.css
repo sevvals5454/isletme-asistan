@@ -2,24 +2,26 @@
 
 :root {
   --background: 0 0% 100%;
-  --foreground: 240 10% 3.9%;
+  --foreground: 240 12% 12%;
   --card: 0 0% 100%;
-  --card-foreground: 240 10% 3.9%;
+  --card-foreground: 240 12% 12%;
   --popover: 0 0% 100%;
-  --popover-foreground: 240 10% 3.9%;
-  --primary: 240 5.9% 10%;
-  --primary-foreground: 0 0% 98%;
-  --secondary: 240 4.8% 95.9%;
-  --secondary-foreground: 240 5.9% 10%;
+  --popover-foreground: 240 12% 12%;
+  /* Marka vurgu rengi — indigo/mor. Butonlar, ikonlar, linkler, aktif menü. */
+  --primary: 245 68% 55%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 245 30% 96%;
+  --secondary-foreground: 245 40% 30%;
   --muted: 240 4.8% 95.9%;
-  --muted-foreground: 240 3.8% 46.1%;
-  --accent: 240 4.8% 95.9%;
-  --accent-foreground: 240 5.9% 10%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 0 0% 98%;
-  --border: 240 5.9% 90%;
-  --input: 240 5.9% 90%;
-  --ring: 240 5.9% 10%;
+  /* Daha koyu gri → ikincil metinler daha okunur */
+  --muted-foreground: 240 6% 38%;
+  --accent: 245 45% 96%;
+  --accent-foreground: 245 45% 32%;
+  --destructive: 0 78% 52%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 240 6% 88%;
+  --input: 240 6% 88%;
+  --ring: 245 68% 55%;
   --radius: 0.625rem;
 }
 
@@ -55,8 +57,22 @@
   border-color: hsl(var(--border));
 }
 
+/* Tabanı bir tık büyüt → tüm rem-tabanlı yazılar daha okunur */
+html {
+  font-size: 16.5px;
+}
+
 body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
   font-feature-settings: "rlig" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Başlıklar biraz daha net */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.01em;
 }

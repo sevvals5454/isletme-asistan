@@ -504,11 +504,11 @@ function StatCard({
 }) {
   const content = (
     <div className="rounded-xl border bg-card p-6 transition-colors hover:bg-muted/30">
-      <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+      <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
         {icon}
       </div>
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="text-2xl font-semibold">{value}</div>
+      <div className="text-xs font-medium text-muted-foreground">{label}</div>
+      <div className="text-3xl font-bold text-primary">{value}</div>
     </div>
   );
   return href ? <Link href={href}>{content}</Link> : content;
