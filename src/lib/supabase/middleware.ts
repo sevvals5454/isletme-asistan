@@ -33,9 +33,15 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
   const isAuthRoute = pathname.startsWith("/login") || pathname.startsWith("/signup");
+  // Girişsiz erişilebilen yasal/bilgi sayfaları
+  const legalRoutes = ["/gizlilik", "/kullanim-kosullari", "/kvkk"];
+  const isLegalRoute = legalRoutes.some((r) => pathname.startsWith(r));
   // /r/... → müşteri randevu onay sayfası (girişsiz, herkese açık)
   const isPublicRoute =
-    pathname === "/" || isAuthRoute || pathname.startsWith("/r/");
+    pathname === "/" ||
+    isAuthRoute ||
+    isLegalRoute ||
+    pathname.startsWith("/r/");
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();

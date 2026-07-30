@@ -120,6 +120,22 @@ export default function SignupPage() {
           {loading && <Loader2 className="h-4 w-4 animate-spin" />}
           Hesap oluştur
         </button>
+
+        <p className="text-center text-xs text-muted-foreground">
+          Hesap oluşturarak{" "}
+          <Link href="/kullanim-kosullari" className="underline hover:text-foreground">
+            Kullanım Koşulları
+          </Link>
+          ,{" "}
+          <Link href="/gizlilik" className="underline hover:text-foreground">
+            Gizlilik Politikası
+          </Link>{" "}
+          ve{" "}
+          <Link href="/kvkk" className="underline hover:text-foreground">
+            KVKK Aydınlatma Metni
+          </Link>
+          ’ni kabul etmiş olursunuz.
+        </p>
       </form>
 
       <p className="text-center text-sm text-muted-foreground">
