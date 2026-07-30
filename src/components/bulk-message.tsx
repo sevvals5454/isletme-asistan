@@ -3,11 +3,8 @@
 import { useMemo, useState } from "react";
 import { MessageCircle, Check, Users, Copy } from "lucide-react";
 import { toast } from "sonner";
-import {
-  toWhatsAppNumber,
-  whatsAppReminderUrl,
-  fillTemplate,
-} from "@/lib/phone";
+import { toWhatsAppNumber, whatsAppReminderUrl } from "@/lib/phone";
+import { renderMessage } from "@/lib/templates";
 
 type Customer = {
   id: string;
@@ -19,8 +16,9 @@ type Customer = {
 
 type Segment = "kvkk" | "all" | string; // string = etiket adı
 
+// İsim otomatik başa eklenir ("Merhaba [isim],") — burada tekrar yazmaya gerek yok.
 const DEFAULT_TEMPLATE =
-  "Merhaba {ad}, size özel kampanyamızdan haberdar olmanızı istedik. Detaylar için bize yazabilirsiniz!";
+  "size özel kampanyamızdan haberdar olmanızı istedik. Detaylar için bize yazabilirsiniz!";
 
 export function BulkMessage({
   customers,
@@ -103,13 +101,14 @@ export function BulkMessage({
             className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
           <p className="text-xs text-muted-foreground">
-            <code className="rounded bg-muted px-1">{"{ad}"}</code> yazdığın yere
-            müşterinin adı gelir. İmza otomatik eklenir: {orgName || "—"}
+            Müşterinin adı mesajın başına <strong>otomatik</strong> eklenir
+            (&quot;Merhaba [isim],&quot;). İmza da otomatik: {orgName || "—"}
           </p>
           <button
             onClick={async () => {
+              // Gruba kopyalarken kişiye özel isim olmaz → "Merhaba," ile başlar.
               const text =
-                (orgName ? fillTemplate(template, "").trim() : template) +
+                renderMessage(template, { ad: "" }) +
                 (orgName ? `\n\n${orgName}` : "");
               try {
                 await navigator.clipboard.writeText(text.trim());
@@ -124,8 +123,8 @@ export function BulkMessage({
             Duyuru grubu için kopyala
           </button>
           <p className="text-xs text-muted-foreground">
-            Grup mesajında kişiye özel {"{ad}"} kullanma — kopyalanan metinde boş
-            bırakılır.
+            Tek tek gönderimde her müşterinin adı otomatik yazılır. Duyuru
+            grubuna kopyalarken isim yerine genel &quot;Merhaba,&quot; kullanılır.
           </p>
         </div>
 
@@ -146,7 +145,7 @@ export function BulkMessage({
         <div className="overflow-hidden rounded-xl border bg-card">
           <ul className="divide-y">
             {recipients.map((c) => {
-              const message = fillTemplate(template, c.name) + signature;
+              const message = renderMessage(template, { ad: c.name }) + signature;
               const url = whatsAppReminderUrl(c.phone, message);
               const isSent = sent.has(c.id);
               return (

@@ -13,8 +13,8 @@ import {
 import { whatsAppReminderUrl } from "@/lib/phone";
 import { formatTrTime, formatTrDate } from "@/lib/time";
 import {
-  DEFAULT_TEMPLATES,
-  renderTemplate,
+  renderMessage,
+  resolveTemplates,
   ibanLine,
   type MessageKind,
 } from "@/lib/templates";
@@ -57,13 +57,6 @@ function untilLabel(start: Date, now: Date): string {
   return `${h} saat kaldı`;
 }
 
-function msg(
-  kind: MessageKind,
-  vars: Record<string, string | number | null | undefined>,
-): string {
-  return renderTemplate(DEFAULT_TEMPLATES[kind], vars);
-}
-
 type CustomerInput = {
   id: string;
   name: string;
@@ -99,6 +92,7 @@ export function buildNotifications(input: {
   futureCustomerIds?: Set<string>; // gelecek randevusu olanlar (geri kazanımdan hariç)
   winbackDays?: number; // "kaybetmek üzere" eşiği (varsayılan 21 gün)
   soonHours?: number; // "yaklaşıyor" eşiği (varsayılan 3 saat)
+  templates?: Partial<Record<MessageKind, string>> | null; // işletmenin özel şablonları
 }): NotificationItem[] {
   const {
     now,
@@ -112,8 +106,16 @@ export function buildNotifications(input: {
     futureCustomerIds = new Set(),
     winbackDays = 21,
     soonHours = 3,
+    templates,
   } = input;
   const items: NotificationItem[] = [];
+
+  // Özel şablonları varsayılanların üzerine bindir; isim otomatik eklenir.
+  const t = resolveTemplates(templates);
+  const msg = (
+    kind: MessageKind,
+    vars: Record<string, string | number | null | undefined>,
+  ): string => renderMessage(t[kind], vars);
 
   // 1) Yaklaşan randevular
   for (const a of upcomingAppointments) {

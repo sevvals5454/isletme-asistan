@@ -109,6 +109,15 @@ export default async function DashboardPage() {
     weekAppointments?.reduce((sum, a) => sum + (a.price ?? 0), 0) ?? 0;
   const orgName = org?.name ?? "";
 
+  // Özel mesaj şablonları (yeni kolon; migration çalışmamışsa varsayılana düşer).
+  const { data: orgTpl } = await supabase
+    .from("organizations")
+    .select("message_templates")
+    .single();
+  const messageTemplates =
+    (orgTpl as { message_templates?: Record<string, string> | null } | null)
+      ?.message_templates ?? null;
+
   // Paketleri kullanım sayısıyla zenginleştir (kalan = toplam - tamamlanan).
   const pkgUsed = new Map<string, number>();
   for (const r of (packageUsedRows ?? []) as { package_id: string | null }[]) {
@@ -163,6 +172,7 @@ export default async function DashboardPage() {
         services: a.services,
       })),
     packages: packagesForNotif,
+    templates: messageTemplates,
   });
 
   // Bu hafta boş günler: business_hours'ta açık ama randevusuz + bugünden itibaren.

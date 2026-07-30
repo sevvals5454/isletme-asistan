@@ -31,7 +31,11 @@ import {
 import { whatsAppReminderUrl, buildReminderMessage } from "@/lib/phone";
 import { trStartOfDay, trStartOfWeek, addDays } from "@/lib/time";
 import { availabilityWarning, type DayHours } from "@/lib/hours";
-import { renderTemplate, DEFAULT_TEMPLATES } from "@/lib/templates";
+import {
+  renderMessage,
+  resolveTemplates,
+  type MessageKind,
+} from "@/lib/templates";
 
 type Appointment = {
   id: string;
@@ -106,6 +110,7 @@ export function AppointmentsView({
   reviewUrl,
   baseUrl,
   openNewAt,
+  templates,
 }: {
   orgId: string;
   initialAppointments: Appointment[];
@@ -119,8 +124,11 @@ export function AppointmentsView({
   reviewUrl: string;
   baseUrl: string; // onay linki için (https://.../r/token)
   openNewAt?: string; // takvimden gelen tarih (YYYY-MM-DD) → modalı aç
+  templates?: Partial<Record<MessageKind, string>> | null;
 }) {
   const router = useRouter();
+  // Özel şablonlar (yoksa varsayılan); isim otomatik eklenir.
+  const t = resolveTemplates(templates);
   const [appointments, setAppointments] =
     useState<Appointment[]>(initialAppointments);
   const [tab, setTab] = useState<Tab>("today");
@@ -380,7 +388,7 @@ export function AppointmentsView({
                         (() => {
                           const url = whatsAppReminderUrl(
                             a.customers?.phone,
-                            renderTemplate(DEFAULT_TEMPLATES.makeup_offer, {
+                            renderMessage(t.makeup_offer, {
                               ad: a.customers?.name ?? "",
                               isletme: orgName,
                             }),
@@ -405,7 +413,7 @@ export function AppointmentsView({
                             : "";
                           const url = whatsAppReminderUrl(
                             a.customers?.phone,
-                            renderTemplate(DEFAULT_TEMPLATES.confirm_request, {
+                            renderMessage(t.confirm_request, {
                               ad: a.customers?.name ?? "",
                               tarih: formatWhen(a.start_at),
                               link,
@@ -430,7 +438,7 @@ export function AppointmentsView({
                         (() => {
                           const url = whatsAppReminderUrl(
                             a.customers?.phone,
-                            renderTemplate(DEFAULT_TEMPLATES.review_request, {
+                            renderMessage(t.review_request, {
                               ad: a.customers?.name ?? "",
                               link: reviewUrl,
                               isletme: orgName,

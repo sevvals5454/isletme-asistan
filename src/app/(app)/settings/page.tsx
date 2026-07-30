@@ -1,15 +1,25 @@
-import { Sparkles, Scissors, Users, Wallet, Clock, CalendarX } from "lucide-react";
+import {
+  Sparkles,
+  Scissors,
+  Users,
+  Wallet,
+  Clock,
+  CalendarX,
+  MessageSquare,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { OrgNameForm } from "@/components/org-name-form";
 import { OrgIbanForm } from "@/components/org-iban-form";
 import { ServicesManager } from "@/components/services-manager";
 import { StaffManager } from "@/components/staff-manager";
 import { BusinessHoursManager } from "@/components/business-hours-manager";
+import { MessageTemplatesManager } from "@/components/message-templates-manager";
 import {
   ClosedDaysManager,
   type ClosedDay,
 } from "@/components/closed-days-manager";
 import { type DayHours } from "@/lib/hours";
+import { type MessageKind } from "@/lib/templates";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -20,7 +30,7 @@ export default async function SettingsPage() {
   const { data: membership } = await supabase
     .from("organization_members")
     .select(
-      "organization_id, role, organizations(id, name, plan, iban, iban_name, google_review_url, created_at)",
+      "organization_id, role, organizations(id, name, plan, iban, iban_name, created_at)",
     )
     .eq("user_id", user!.id)
     .single();
@@ -31,9 +41,26 @@ export default async function SettingsPage() {
     plan: string;
     iban: string | null;
     iban_name: string | null;
-    google_review_url: string | null;
     created_at: string;
   } | null;
+
+  // Yeni/opsiyonel kolonlar (migration çalışmamış olabilir) — hata olursa varsayılana düş.
+  let reviewUrl = "";
+  let messageTemplates: Partial<Record<MessageKind, string>> = {};
+  if (org) {
+    const { data: orgExtra } = await supabase
+      .from("organizations")
+      .select("google_review_url, message_templates")
+      .eq("id", org.id)
+      .single();
+    reviewUrl =
+      (orgExtra as { google_review_url?: string | null } | null)
+        ?.google_review_url ?? "";
+    messageTemplates =
+      (orgExtra as {
+        message_templates?: Partial<Record<MessageKind, string>> | null;
+      } | null)?.message_templates ?? {};
+  }
 
   const [{ data: services }, { data: staff }, { data: hours }, { data: closed }] =
     await Promise.all([
@@ -86,7 +113,24 @@ export default async function SettingsPage() {
             orgId={org.id}
             initialIban={org.iban ?? ""}
             initialIbanName={org.iban_name ?? ""}
-            initialReviewUrl={org.google_review_url ?? ""}
+            initialReviewUrl={reviewUrl}
+          />
+        )}
+      </section>
+
+      <section className="rounded-xl border bg-card p-6">
+        <div className="mb-1 flex items-center gap-2">
+          <MessageSquare className="h-4 w-4" />
+          <h2 className="font-semibold">Mesaj şablonları</h2>
+        </div>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Müşterilere gönderilen WhatsApp mesajlarını kendi dilinize göre
+          düzenleyin. İsim otomatik eklenir.
+        </p>
+        {org && (
+          <MessageTemplatesManager
+            orgId={org.id}
+            initial={messageTemplates}
           />
         )}
       </section>

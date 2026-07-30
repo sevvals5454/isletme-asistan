@@ -74,8 +74,20 @@ export default async function AppointmentsPage({
       .from("business_hours")
       .select("weekday, is_open, open_time, close_time"),
     supabase.from("closed_days").select("date"),
-    supabase.from("organizations").select("name, google_review_url").single(),
+    supabase.from("organizations").select("name").single(),
   ]);
+
+  // Opsiyonel/yeni kolonlar (migration çalışmamış olabilir) — hata olursa varsayılana düş.
+  const { data: orgExtra } = await supabase
+    .from("organizations")
+    .select("google_review_url, message_templates")
+    .single();
+  const reviewUrl =
+    (orgExtra as { google_review_url?: string | null } | null)
+      ?.google_review_url ?? "";
+  const templates =
+    (orgExtra as { message_templates?: Record<string, string> | null } | null)
+      ?.message_templates ?? null;
 
   // Paketlerin kalan seansını tamamlanmış randevulardan hesapla;
   // sadece randevuda kullanılabilir olanları (kalan > 0, süresi dolmamış) geçir.
@@ -111,12 +123,10 @@ export default async function AppointmentsPage({
       hours={(hours ?? []) as never}
       closedDays={((closedDays ?? []) as { date: string }[]).map((d) => d.date)}
       orgName={org?.name ?? ""}
-      reviewUrl={
-        (org as { google_review_url?: string | null } | null)
-          ?.google_review_url ?? ""
-      }
+      reviewUrl={reviewUrl}
       baseUrl={baseUrl}
       openNewAt={openNewAt}
+      templates={templates}
     />
   );
 }

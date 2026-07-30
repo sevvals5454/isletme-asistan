@@ -615,6 +615,7 @@ create index if not exists idx_appointments_confirm_token
   on public.appointments(confirm_token);
 
 alter table public.organizations add column if not exists google_review_url text;
+alter table public.organizations add column if not exists message_templates jsonb;
 
 -- Public (anon) onay fonksiyonları
 create or replace function public.get_appointment_by_token(p_token uuid)
