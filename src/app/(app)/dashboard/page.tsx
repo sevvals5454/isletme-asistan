@@ -31,6 +31,10 @@ import {
   type NotificationItem,
   type Severity,
 } from "@/lib/notifications";
+import {
+  OnboardingGuide,
+  type OnboardingStatus,
+} from "@/components/onboarding-guide";
 
 type TodayAppointment = {
   id: string;
@@ -67,6 +71,8 @@ export default async function DashboardPage() {
     { data: allCustomers },
     { data: retentionAppts },
     { data: hoursRows },
+    { count: servicesCount },
+    { count: staffCount },
   ] = await Promise.all([
     supabase.from("customers").select("*", { count: "exact", head: true }),
     supabase
@@ -102,6 +108,8 @@ export default async function DashboardPage() {
     supabase.from("customers").select("id, name, phone, birth_date"),
     supabase.from("appointments").select("customer_id, start_at, status"),
     supabase.from("business_hours").select("weekday, is_open"),
+    supabase.from("services").select("*", { count: "exact", head: true }),
+    supabase.from("staff").select("*", { count: "exact", head: true }),
   ]);
 
   const today = (todayAppointments ?? []) as unknown as TodayAppointment[];
@@ -117,6 +125,17 @@ export default async function DashboardPage() {
   const messageTemplates =
     (orgTpl as { message_templates?: Record<string, string> | null } | null)
       ?.message_templates ?? null;
+
+  // Başlangıç rehberi durumu — hangi adımlar tamamlandı?
+  const onboardingStatus: OnboardingStatus = {
+    services: (servicesCount ?? 0) > 0,
+    customers: (customerCount ?? 0) > 0,
+    appointment: (retentionAppts?.length ?? 0) > 0,
+    staff: (staffCount ?? 0) > 0,
+    branding:
+      !!org?.iban ||
+      (!!messageTemplates && Object.keys(messageTemplates).length > 0),
+  };
 
   // Paketleri kullanım sayısıyla zenginleştir (kalan = toplam - tamamlanan).
   const pkgUsed = new Map<string, number>();
@@ -213,6 +232,8 @@ export default async function DashboardPage() {
           İşletmenizin genel durumu
         </p>
       </div>
+
+      <OnboardingGuide status={onboardingStatus} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard

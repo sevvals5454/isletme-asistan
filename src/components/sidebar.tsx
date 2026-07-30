@@ -15,6 +15,7 @@ import {
   LogOut,
   Sparkles,
   Settings,
+  HelpCircle,
   Menu,
   X,
 } from "lucide-react";
@@ -31,6 +32,7 @@ const navItems = [
   { href: "/expenses", label: "Giderler", icon: TrendingDown },
   { href: "/messages/bulk", label: "Toplu Mesaj", icon: Send },
   { href: "/settings", label: "Ayarlar", icon: Settings },
+  { href: "/rehber", label: "Yardım", icon: HelpCircle },
 ];
 
 export function Sidebar({
