@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Sidebar } from "@/components/sidebar";
+import { UpdateNotifier } from "@/components/update-notifier";
 
 export default async function AppLayout({
   children,
@@ -25,6 +26,7 @@ export default async function AppLayout({
 
   return (
     <div className="min-h-screen bg-background">
+      <UpdateNotifier />
       <Sidebar orgName={orgName} userEmail={user.email ?? ""} />
       <main className="md:pl-64">
         <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
