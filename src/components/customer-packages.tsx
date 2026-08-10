@@ -2,17 +2,24 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus, Trash2, Check, X, Wallet, Pencil } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  Trash2,
+  Check,
+  X,
+  Pencil,
+  Undo2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { formatPrice } from "@/lib/appointments";
-import { formatTrDate } from "@/lib/time";
+import { formatTrDate, trDateKey } from "@/lib/time";
 import {
   type PackageWithUsage,
   type PackageType,
   remainingSessions,
   isExpired,
-  monthlyDueStatus,
 } from "@/lib/packages";
 
 type ServiceOption = { id: string; name: string };
@@ -37,6 +44,20 @@ function nextBillingDate(day: number, from = new Date()): string {
 function advanceOneMonth(dateStr: string): string {
   const [y, m, d] = dateStr.split("-").map(Number);
   return ymd(y, m - 1 + 1, d);
+}
+
+// next_payment_at'ı bir ay geri al (yanlış "Ödendi" işaretini geri almak için).
+function retreatOneMonth(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return ymd(y, m - 1 - 1, d);
+}
+
+// Aylık üyelikte bu dönemin ödemesi alınmış mı?
+// Sonraki ödeme tarihi bugünden ileride ise → dönem ödenmiş (Ödendi).
+// Tarih bugüne gelmiş/geçmişse → ödeme bekleniyor (Beklemede).
+function isPeriodPaid(pkg: { next_payment_at: string | null }): boolean {
+  if (!pkg.next_payment_at) return false;
+  return pkg.next_payment_at.slice(0, 10) > trDateKey(new Date());
 }
 
 export function CustomerPackages({
@@ -86,7 +107,29 @@ export function CustomerPackages({
     setPackages((prev) =>
       prev.map((p) => (p.id === pkg.id ? { ...p, next_payment_at: next } : p)),
     );
-    toast.success("Ödeme alındı, sonraki aya geçildi");
+    toast.success("Ödeme alındı olarak işaretlendi");
+    router.refresh();
+  }
+
+  // "Beklemede'ye al" — yanlışlıkla ödendi işaretlendiyse bir ay geri al.
+  async function markPending(pkg: PackageWithUsage) {
+    if (!pkg.next_payment_at) return;
+    const prevDate = retreatOneMonth(pkg.next_payment_at);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("customer_packages")
+      .update({ next_payment_at: prevDate })
+      .eq("id", pkg.id);
+    if (error) {
+      toast.error("Güncellenemedi", { description: error.message });
+      return;
+    }
+    setPackages((prev) =>
+      prev.map((p) =>
+        p.id === pkg.id ? { ...p, next_payment_at: prevDate } : p,
+      ),
+    );
+    toast.success("Beklemede olarak işaretlendi");
     router.refresh();
   }
 
@@ -106,6 +149,7 @@ export function CustomerPackages({
                 pkg={p}
                 serviceName={serviceName(p.service_id)}
                 onPaid={() => markPaid(p)}
+                onPending={() => markPending(p)}
                 onEdit={() => {
                   setEditing(p);
                   setAdding(false);
@@ -216,24 +260,22 @@ function MonthlyRow({
   pkg,
   serviceName,
   onPaid,
+  onPending,
   onEdit,
   onDelete,
 }: {
   pkg: PackageWithUsage;
   serviceName: string;
   onPaid: () => void;
+  onPending: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const due = monthlyDueStatus(pkg);
-  const dueBadge =
-    due === "overdue"
-      ? "rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400"
-      : due === "soon"
-        ? "rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-        : "rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground";
-  const dueText =
-    due === "overdue" ? "Gecikti" : due === "soon" ? "Yaklaşıyor" : "Güncel";
+  const paid = isPeriodPaid(pkg);
+  const statusBadge = paid
+    ? "rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400"
+    : "rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
+  const statusText = paid ? "Ödendi" : "Beklemede";
   return (
     <li className="flex items-center justify-between gap-3 rounded-lg border p-3 text-sm">
       <div className="min-w-0">
@@ -241,19 +283,30 @@ function MonthlyRow({
         <div className="truncate text-xs text-muted-foreground">
           Aylık üyelik · {serviceName} · {formatPrice(pkg.price)}/ay
           {pkg.next_payment_at &&
-            ` · sonraki ödeme: ${formatTrDate(pkg.next_payment_at)}`}
+            ` · ${paid ? "sonraki ödeme" : "ödeme günü"}: ${formatTrDate(pkg.next_payment_at)}`}
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        {pkg.next_payment_at && <span className={dueBadge}>{dueText}</span>}
-        <button
-          onClick={onPaid}
-          className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium hover:bg-muted"
-          title="Bu ayın ödemesi alındı, sonraki aya geç"
-        >
-          <Wallet className="h-3.5 w-3.5" />
-          Ödendi
-        </button>
+        {pkg.next_payment_at && <span className={statusBadge}>{statusText}</span>}
+        {paid ? (
+          <button
+            onClick={onPending}
+            className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted"
+            title="Yanlış işaretlediysen beklemedeye geri al"
+          >
+            <Undo2 className="h-3.5 w-3.5" />
+            Beklemede
+          </button>
+        ) : (
+          <button
+            onClick={onPaid}
+            className="inline-flex items-center gap-1 rounded-lg bg-green-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-green-700"
+            title="Ödeme alındı olarak işaretle"
+          >
+            <Check className="h-3.5 w-3.5" />
+            Ödendi
+          </button>
+        )}
         <button
           onClick={onEdit}
           className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
