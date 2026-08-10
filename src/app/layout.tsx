@@ -20,8 +20,8 @@ export const metadata: Metadata = {
   description: "Müşteri, randevu, paket ve gelir-gider yönetimi tek panelde",
   appleWebApp: { capable: true, title: "TechİŞ", statusBarStyle: "default" },
   icons: {
-    icon: "/icon.svg",
-    apple: "/icon.svg",
+    icon: "/icon.png",
+    apple: "/icon.png",
   },
   openGraph: {
     title: "TechİŞ — İşletme Asistanı",

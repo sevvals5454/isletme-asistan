@@ -13,7 +13,7 @@ export default function AuthLayout({
           <Link href="/" className="flex items-center gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/icon.svg"
+              src="/icon.png"
               alt="TechİŞ"
               width={36}
               height={36}

@@ -63,7 +63,7 @@ export function Sidebar({
       <div className="flex items-center gap-2">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/icon.svg"
+          src="/icon.png"
           alt="TechİŞ"
           width={32}
           height={32}
@@ -130,7 +130,7 @@ export function Sidebar({
         <div className="flex min-w-0 items-center gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/icon.svg"
+            src="/icon.png"
             alt="TechİŞ"
             width={28}
             height={28}
