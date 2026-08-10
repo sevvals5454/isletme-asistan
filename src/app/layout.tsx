@@ -15,9 +15,27 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://isletme-asistan.vercel.app"),
   title: "TechİŞ — İşletme Asistanı",
   description: "Müşteri, randevu, paket ve gelir-gider yönetimi tek panelde",
   appleWebApp: { capable: true, title: "TechİŞ", statusBarStyle: "default" },
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon.svg",
+  },
+  openGraph: {
+    title: "TechİŞ — İşletme Asistanı",
+    description: "Müşteri, randevu, paket ve gelir-gider yönetimi tek panelde",
+    type: "website",
+    locale: "tr_TR",
+    images: [{ url: "/og.png", width: 1229, height: 1229, alt: "TechİŞ" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "TechİŞ — İşletme Asistanı",
+    description: "Müşteri, randevu, paket ve gelir-gider yönetimi tek panelde",
+    images: ["/og.png"],
+  },
 };
 
 export const viewport: Viewport = {
