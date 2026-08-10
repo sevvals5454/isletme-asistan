@@ -84,11 +84,11 @@ export default function LandingPage() {
         </div>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
-            <Check className="h-3.5 w-3.5 text-green-600" /> Kredi kartı
-            gerekmez
+            <Check className="h-3.5 w-3.5 text-green-600" /> Masaüstü ve telefonda
+            çalışır
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <Check className="h-3.5 w-3.5 text-green-600" /> Telefonda da çalışır
+            <Check className="h-3.5 w-3.5 text-green-600" /> Kurulum gerekmez
           </span>
           <span className="inline-flex items-center gap-1.5">
             <Check className="h-3.5 w-3.5 text-green-600" /> KVKK’ya uygun
