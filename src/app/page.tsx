@@ -61,10 +61,10 @@ export default function LandingPage() {
           Randevu · Müşteri · Paket · Gelir takibi — tek panelde
         </div>
         <h1 className="mb-6 text-balance text-4xl font-semibold tracking-tight md:text-6xl">
-          Defter ve WhatsApp karmaşasını
+          Randevu, müşteri ve gelir
           <br />
           <span className="bg-gradient-to-r from-primary to-violet-500 bg-clip-text text-transparent">
-            tek panele taşıyın.
+            tek panelde.
           </span>
         </h1>
         <p className="mx-auto mb-10 max-w-xl text-balance text-lg text-muted-foreground">
