@@ -2,16 +2,16 @@ import { type Metadata } from "next";
 import { LegalShell, LegalSection } from "@/components/legal-shell";
 
 export const metadata: Metadata = {
-  title: "Gizlilik Politikası — İşletme Asistanı",
+  title: "Gizlilik Politikası — TechİŞ",
   description:
-    "İşletme Asistanı gizlilik politikası: hangi verileri, neden ve nasıl işliyoruz.",
+    "TechİŞ gizlilik politikası: hangi verileri, neden ve nasıl işliyoruz.",
 };
 
 export default function GizlilikPage() {
   return (
     <LegalShell title="Gizlilik Politikası" updated="30 Temmuz 2026">
       <p>
-        Bu politika, İşletme Asistanı (“Uygulama”, “biz”) hizmetini kullanırken
+        Bu politika, TechİŞ (“Uygulama”, “biz”) hizmetini kullanırken
         verilerinizin nasıl toplandığını, kullanıldığını ve korunduğunu açıklar.
         Uygulamayı kullanarak bu politikayı kabul etmiş olursunuz.
       </p>

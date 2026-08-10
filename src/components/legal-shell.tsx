@@ -17,10 +17,17 @@ export function LegalShell({
       <header className="border-b">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-foreground text-background">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-foreground text-background">
               <Sparkles className="h-4 w-4" />
             </div>
-            <span className="font-semibold">İşletme Asistanı</span>
+            <div className="leading-tight">
+              <div className="font-semibold">
+                Tech<span className="text-primary">İŞ</span>
+              </div>
+              <div className="text-[11px] text-muted-foreground">
+                İşletme Asistanı
+              </div>
+            </div>
           </Link>
           <Link
             href="/"

@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "İşletme Asistanı",
+  title: "TechİŞ — İşletme Asistanı",
   description: "Müşteri, randevu, paket ve gelir-gider yönetimi tek panelde",
-  appleWebApp: { capable: true, title: "İşletmem", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "TechİŞ", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {

@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "İşletme Asistanı",
-    short_name: "İşletmem",
+    name: "TechİŞ — İşletme Asistanı",
+    short_name: "TechİŞ",
     description: "Müşteri, randevu, paket ve gelir-gider yönetimi tek panelde",
     start_url: "/dashboard",
     display: "standalone",

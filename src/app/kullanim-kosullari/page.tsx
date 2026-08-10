@@ -2,8 +2,8 @@ import { type Metadata } from "next";
 import { LegalShell, LegalSection } from "@/components/legal-shell";
 
 export const metadata: Metadata = {
-  title: "Kullanım Koşulları — İşletme Asistanı",
-  description: "İşletme Asistanı hizmetinin kullanım koşulları.",
+  title: "Kullanım Koşulları — TechİŞ",
+  description: "TechİŞ hizmetinin kullanım koşulları.",
 };
 
 export default function KullanimKosullariPage() {

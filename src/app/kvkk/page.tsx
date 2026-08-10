@@ -2,7 +2,7 @@ import { type Metadata } from "next";
 import { LegalShell, LegalSection } from "@/components/legal-shell";
 
 export const metadata: Metadata = {
-  title: "KVKK Aydınlatma Metni — İşletme Asistanı",
+  title: "KVKK Aydınlatma Metni — TechİŞ",
   description:
     "6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında aydınlatma metni.",
 };
@@ -12,7 +12,7 @@ export default function KvkkPage() {
     <LegalShell title="KVKK Aydınlatma Metni" updated="30 Temmuz 2026">
       <p>
         Bu metin, 6698 sayılı Kişisel Verilerin Korunması Kanunu (“KVKK”)
-        kapsamında, İşletme Asistanı hizmetini kullanan işletme sahiplerinin
+        kapsamında, TechİŞ hizmetini kullanan işletme sahiplerinin
         kişisel verilerinin işlenmesine ilişkin aydınlatma yükümlülüğünü yerine
         getirmek amacıyla hazırlanmıştır.
       </p>
@@ -53,7 +53,7 @@ export default function KvkkPage() {
           Uygulamaya kendi müşterilerinize ait kişisel verileri girdiğinizde, bu
           veriler bakımından <strong>veri sorumlusu sizsiniz</strong>. Bu
           kişilere yönelik aydınlatma yapılması ve gerekli hâllerde açık rıza
-          alınması sizin yükümlülüğünüzdedir. İşletme Asistanı bu verileri sizin
+          alınması sizin yükümlülüğünüzdedir. TechİŞ bu verileri sizin
           talimatınız doğrultusunda işleyen konumundadır.
         </p>
       </LegalSection>

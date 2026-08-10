@@ -1,4 +1,4 @@
-# İşletme Asistanı
+# TechİŞ — İşletme Asistanı
 
 Küçük işletmeler için **müşteri, randevu, paket ve ödeme yönetimini** tek panelde toplayan, mobil uyumlu, **sektör bağımsız** bir yönetim uygulaması. Kuaför, pilates/spor stüdyosu, güzellik salonu, özel ders, klinik gibi randevuyla çalışan her işletme için uyarlanabilir.
 
