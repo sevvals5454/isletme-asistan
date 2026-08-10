@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { type ReactNode } from "react";
 import { SiteFooter } from "@/components/site-footer";
 
@@ -17,9 +17,14 @@ export function LegalShell({
       <header className="border-b">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-foreground text-background">
-              <Sparkles className="h-4 w-4" />
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/icon.svg"
+              alt="TechİŞ"
+              width={36}
+              height={36}
+              className="h-9 w-9 rounded-lg"
+            />
             <div className="leading-tight">
               <div className="font-semibold">
                 Tech<span className="text-primary">İŞ</span>

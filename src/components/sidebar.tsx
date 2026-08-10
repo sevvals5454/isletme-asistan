@@ -13,7 +13,6 @@ import {
   TrendingDown,
   Send,
   LogOut,
-  Sparkles,
   Settings,
   HelpCircle,
   Menu,
@@ -62,9 +61,14 @@ export function Sidebar({
   const header = (
     <div className="border-b p-4">
       <div className="flex items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-foreground text-background">
-          <Sparkles className="h-4 w-4" />
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/icon.svg"
+          alt="TechİŞ"
+          width={32}
+          height={32}
+          className="h-8 w-8 rounded-lg"
+        />
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-semibold">{orgName}</div>
           <div className="truncate text-xs text-muted-foreground">
@@ -124,9 +128,14 @@ export function Sidebar({
           <Menu className="h-5 w-5" />
         </button>
         <div className="flex min-w-0 items-center gap-2">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-foreground text-background">
-            <Sparkles className="h-4 w-4" />
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/icon.svg"
+            alt="TechİŞ"
+            width={28}
+            height={28}
+            className="h-7 w-7 shrink-0 rounded-lg"
+          />
           <span className="truncate text-sm font-semibold">{orgName}</span>
         </div>
       </div>
