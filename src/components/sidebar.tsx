@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
+  Sparkles,
   Users,
   Calendar,
   CalendarDays,
@@ -23,6 +24,7 @@ import { createClient } from "@/lib/supabase/client";
 
 const navItems = [
   { href: "/dashboard", label: "Panel", icon: LayoutDashboard },
+  { href: "/asistan", label: "Akıllı Asistan", icon: Sparkles },
   { href: "/customers", label: "Müşteriler", icon: Users },
   { href: "/appointments", label: "Randevular", icon: Calendar },
   { href: "/calendar", label: "Takvim", icon: CalendarDays },
