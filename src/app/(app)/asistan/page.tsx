@@ -7,13 +7,21 @@ import {
   Package,
   TrendingUp,
   TrendingDown,
+  AlertTriangle,
+  Users,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import {
   analyzeChurn,
   analyzeRevenue,
   analyzeServices,
+  analyzeAppointmentRisk,
+  analyzeStaff,
+  APPT_RISK_LABEL,
+  CHURN_RISK_STYLE,
+  type ApptRiskLevel,
 } from "@/lib/insights";
+import { formatTrDate, formatTrTime } from "@/lib/time";
 import {
   type CustomerPackage,
   withUsage,
@@ -52,7 +60,7 @@ export default async function AsistanPage() {
     supabase
       .from("appointments")
       .select(
-        "customer_id, start_at, status, price, package_id, services(name)",
+        "id, customer_id, staff_id, start_at, status, price, package_id, services(name), staff(name), customers(name)",
       ),
     supabase
       .from("customer_packages")
@@ -87,6 +95,12 @@ export default async function AsistanPage() {
     packages: (packages ?? []) as never,
   });
   const services = analyzeServices({ now, appointments: appts });
+  const apptRisk = analyzeAppointmentRisk({ now, appointments: appts });
+  const staffAnalysis = analyzeStaff({ appointments: appts });
+  const riskStyle = (l: ApptRiskLevel) =>
+    l === "unknown"
+      ? "bg-muted text-muted-foreground"
+      : CHURN_RISK_STYLE[l];
 
   // --- Paket bitiş: kullanım + son kullanım hesapla ---
   const usedByPkg = new Map<string, number>();
@@ -280,6 +294,98 @@ export default async function AsistanPage() {
                           </span>
                         )}
                       </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* RANDEVU RİSK ANALİZİ */}
+      <section className="rounded-xl border bg-card p-6">
+        <div className="mb-1 flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4" />
+          <h2 className="font-semibold">Randevu risk analizi</h2>
+        </div>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Önümüzdeki 7 gün · geçmiş iptal/gelmeme davranışına göre (kesin tahmin
+          değildir)
+        </p>
+        {apptRisk.length === 0 ? (
+          <NoData>Önümüzdeki 7 günde planlı randevu yok.</NoData>
+        ) : (
+          <ul className="space-y-2">
+            {apptRisk.map((r) => (
+              <li
+                key={r.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-sm"
+              >
+                <div className="min-w-0">
+                  <div className="font-medium">{r.customerName}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {formatTrDate(r.when)} · {formatTrTime(r.when)}
+                    {r.serviceName ? ` · ${r.serviceName}` : ""}
+                    {r.level !== "unknown" &&
+                      ` · geçmiş: ${r.noShowCancel}/${r.pastTotal} kaçırma`}
+                  </div>
+                </div>
+                <span
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${riskStyle(r.level)}`}
+                >
+                  {APPT_RISK_LABEL[r.level]}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* PERSONEL PERFORMANSI */}
+      <section className="rounded-xl border bg-card p-6">
+        <div className="mb-1 flex items-center gap-2">
+          <Users className="h-4 w-4" />
+          <h2 className="font-semibold">Personel performansı</h2>
+        </div>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Çalışan bazında randevu, gelir ve müşteri sadakati
+        </p>
+        {!staffAnalysis.enough ? (
+          <NoData>
+            Personel analizi için yeterli veri yok (çalışana atanmış en az 5
+            tamamlanmış randevu gerekir).
+          </NoData>
+        ) : (
+          <div className="space-y-3">
+            {staffAnalysis.staff.length >= 2 &&
+              staffAnalysis.staff[0] && (
+                <div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-900/20 dark:text-green-400">
+                  🏆 En yüksek gelir: <strong>{staffAnalysis.staff[0].name}</strong>
+                  {" · "}ortalama tekrar oranı %{staffAnalysis.avgRepeatRate}
+                </div>
+              )}
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[480px] text-sm">
+                <thead>
+                  <tr className="border-b text-left text-xs text-muted-foreground">
+                    <th className="py-2 pr-3 font-medium">Çalışan</th>
+                    <th className="py-2 pr-3 font-medium">Randevu</th>
+                    <th className="py-2 pr-3 font-medium">Gelir</th>
+                    <th className="py-2 pr-3 font-medium">Ort. harcama</th>
+                    <th className="py-2 pr-3 font-medium">İptal</th>
+                    <th className="py-2 font-medium">Tekrar</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {staffAnalysis.staff.map((s) => (
+                    <tr key={s.name} className="border-b last:border-0">
+                      <td className="py-2 pr-3">{s.name}</td>
+                      <td className="py-2 pr-3">{s.appts}</td>
+                      <td className="py-2 pr-3">{formatPrice(s.revenue)}</td>
+                      <td className="py-2 pr-3">{formatPrice(s.avgSpend)}</td>
+                      <td className="py-2 pr-3">%{s.cancelRate}</td>
+                      <td className="py-2">%{s.repeatRate}</td>
                     </tr>
                   ))}
                 </tbody>

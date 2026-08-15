@@ -397,3 +397,156 @@ export function analyzeServices(input: {
     bottom: services.length > 1 ? services[services.length - 1] : null,
   };
 }
+
+// ============================================================
+// RANDEVU RİSK ANALİZİ — Faz 4
+// Geçmiş iptal/gelmeme davranışına göre yaklaşan randevu riski.
+// Yeterli geçmişi (>=3 randevu) olmayan müşteride "unknown" (uydurma yok).
+// ============================================================
+
+export type ApptRiskLevel = "low" | "medium" | "high" | "unknown";
+
+export const APPT_RISK_LABEL: Record<ApptRiskLevel, string> = {
+  low: "Düşük risk",
+  medium: "Orta risk",
+  high: "Yüksek risk",
+  unknown: "Yeterli veri yok",
+};
+
+export type UpcomingRisk = {
+  id: string;
+  when: string;
+  customerName: string;
+  serviceName: string | null;
+  level: ApptRiskLevel;
+  pastTotal: number;
+  noShowCancel: number;
+};
+
+export function analyzeAppointmentRisk(input: {
+  now: Date;
+  horizonDays?: number;
+  appointments: {
+    id: string;
+    customer_id: string;
+    start_at: string;
+    status: string;
+    customers: { name: string } | null;
+    services: { name: string } | null;
+  }[];
+}): UpcomingRisk[] {
+  const { now, horizonDays = 7, appointments } = input;
+  const nowT = now.getTime();
+  const horizon = nowT + horizonDays * DAY;
+
+  const hist = new Map<string, { total: number; bad: number }>();
+  for (const a of appointments) {
+    const t = new Date(a.start_at).getTime();
+    if (t > nowT) continue; // sadece geçmiş davranış
+    const e = hist.get(a.customer_id) ?? { total: 0, bad: 0 };
+    e.total++;
+    if (a.status === "no_show" || a.status === "cancelled") e.bad++;
+    hist.set(a.customer_id, e);
+  }
+
+  const upcoming = appointments.filter((a) => {
+    const t = new Date(a.start_at).getTime();
+    return a.status === "scheduled" && t > nowT && t <= horizon;
+  });
+
+  const res: UpcomingRisk[] = upcoming.map((a) => {
+    const h = hist.get(a.customer_id);
+    let level: ApptRiskLevel = "unknown";
+    if (h && h.total >= 3) {
+      const rate = h.bad / h.total;
+      level = rate >= 0.4 ? "high" : rate >= 0.2 ? "medium" : "low";
+    }
+    return {
+      id: a.id,
+      when: a.start_at,
+      customerName: a.customers?.name ?? "Müşteri",
+      serviceName: a.services?.name ?? null,
+      level,
+      pastTotal: h?.total ?? 0,
+      noShowCancel: h?.bad ?? 0,
+    };
+  });
+
+  const rank: Record<ApptRiskLevel, number> = {
+    high: 0,
+    medium: 1,
+    low: 2,
+    unknown: 3,
+  };
+  res.sort(
+    (a, b) =>
+      rank[a.level] - rank[b.level] ||
+      new Date(a.when).getTime() - new Date(b.when).getTime(),
+  );
+  return res;
+}
+
+// ============================================================
+// PERSONEL PERFORMANS ANALİZİ — Faz 4
+// ============================================================
+
+export type StaffStat = {
+  name: string;
+  appts: number; // tamamlanan randevu
+  revenue: number;
+  avgSpend: number;
+  cancelRate: number; // %
+  repeatRate: number; // tekrar gelen müşteri %
+};
+
+export function analyzeStaff(input: {
+  appointments: {
+    staff: { name: string } | null;
+    status: string;
+    price: number | null;
+    customer_id: string;
+  }[];
+}): { enough: boolean; staff: StaffStat[]; avgRepeatRate: number } {
+  const withStaff = input.appointments.filter((a) => a.staff?.name);
+  const g = new Map<
+    string,
+    { status: string; price: number | null; customer_id: string }[]
+  >();
+  for (const a of withStaff) {
+    const n = a.staff!.name;
+    if (!g.has(n)) g.set(n, []);
+    g.get(n)!.push(a);
+  }
+  const enough =
+    g.size >= 1 &&
+    withStaff.filter((a) => a.status === "completed").length >= 5;
+
+  const staff: StaffStat[] = [];
+  for (const [name, list] of g) {
+    const completed = list.filter((a) => a.status === "completed");
+    const bad = list.filter(
+      (a) => a.status === "no_show" || a.status === "cancelled",
+    );
+    const revenue = completed.reduce((s, a) => s + (a.price ?? 0), 0);
+    const custCounts = new Map<string, number>();
+    for (const a of completed)
+      custCounts.set(a.customer_id, (custCounts.get(a.customer_id) ?? 0) + 1);
+    const distinct = custCounts.size;
+    const repeat = [...custCounts.values()].filter((c) => c > 1).length;
+    staff.push({
+      name,
+      appts: completed.length,
+      revenue,
+      avgSpend: distinct ? Math.round(revenue / distinct) : 0,
+      cancelRate: list.length
+        ? Math.round((bad.length / list.length) * 100)
+        : 0,
+      repeatRate: distinct ? Math.round((repeat / distinct) * 100) : 0,
+    });
+  }
+  staff.sort((a, b) => b.revenue - a.revenue);
+  const avgRepeatRate = staff.length
+    ? Math.round(staff.reduce((s, x) => s + x.repeatRate, 0) / staff.length)
+    : 0;
+  return { enough, staff, avgRepeatRate };
+}
