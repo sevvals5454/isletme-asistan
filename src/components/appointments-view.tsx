@@ -804,20 +804,28 @@ function AppointmentModal({
             </div>
 
             {newMode && !isEdit ? (
-              <div className="space-y-2">
-                <input
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  placeholder="Ad Soyad"
-                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                />
-                <input
-                  value={newPhone}
-                  onChange={(e) => setNewPhone(formatTurkishPhone(e.target.value))}
-                  placeholder="0532 123 45 67"
-                  inputMode="tel"
-                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                />
+              <div className="mt-1.5 space-y-2 rounded-lg border border-dashed bg-muted/30 p-3">
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">
+                    Ad Soyad *
+                  </label>
+                  <input
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder="Örn. Ayşe Yılmaz"
+                    className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Telefon</label>
+                  <input
+                    value={newPhone}
+                    onChange={(e) => setNewPhone(formatTurkishPhone(e.target.value))}
+                    placeholder="0532 123 45 67"
+                    inputMode="tel"
+                    className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                </div>
                 <p className="text-xs text-muted-foreground">
                   Bu müşteri kaydedilip randevuya eklenecek.
                 </p>
