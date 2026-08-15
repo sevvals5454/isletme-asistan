@@ -9,6 +9,8 @@ import {
   TrendingDown,
   AlertTriangle,
   Users,
+  FileText,
+  Lightbulb,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -17,11 +19,12 @@ import {
   analyzeServices,
   analyzeAppointmentRisk,
   analyzeStaff,
+  buildWeeklyReport,
   APPT_RISK_LABEL,
   CHURN_RISK_STYLE,
   type ApptRiskLevel,
 } from "@/lib/insights";
-import { formatTrDate, formatTrTime } from "@/lib/time";
+import { formatTrDate, formatTrTime, trStartOfWeek } from "@/lib/time";
 import {
   type CustomerPackage,
   withUsage,
@@ -56,7 +59,7 @@ export default async function AsistanPage() {
     { data: org },
     { data: orgTpl },
   ] = await Promise.all([
-    supabase.from("customers").select("id, name, phone"),
+    supabase.from("customers").select("id, name, phone, created_at"),
     supabase
       .from("appointments")
       .select(
@@ -141,6 +144,19 @@ export default async function AsistanPage() {
       };
     });
 
+  // --- Haftalık rapor ---
+  const weekly = buildWeeklyReport({
+    now,
+    startOfWeek: trStartOfWeek(),
+    appointments: appts,
+    packages: (packages ?? []) as never,
+    customersCreatedAt: ((customers ?? []) as { created_at: string }[]).map(
+      (c) => c.created_at,
+    ),
+    churnCount: churn.enough ? churn.customers.length : 0,
+    packagesEndingCount: endingPackages.length,
+  });
+
   return (
     <div className="space-y-8">
       <div>
@@ -152,6 +168,72 @@ export default async function AsistanPage() {
           İşletmenin gerçek verilerinden çıkarılan analizler ve öneriler
         </p>
       </div>
+
+      {/* HAFTALIK RAPOR */}
+      <section className="rounded-xl border bg-card p-6">
+        <div className="mb-1 flex items-center gap-2">
+          <FileText className="h-4 w-4" />
+          <h2 className="font-semibold">Haftalık rapor</h2>
+        </div>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Bu haftanın özeti (Pazartesi&apos;den bugüne)
+        </p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {[
+            { label: "Ciro", value: formatPrice(weekly.revenue) },
+            { label: "Yeni müşteri", value: String(weekly.newCustomers) },
+            { label: "Toplam randevu", value: String(weekly.totalAppointments) },
+            { label: "İptal / gelmeme", value: String(weekly.cancellations) },
+            {
+              label: "Ort. müşteri harcaması",
+              value: weekly.avgSpend != null ? formatPrice(weekly.avgSpend) : "—",
+            },
+            {
+              label: "Risk altındaki müşteri",
+              value: String(weekly.atRiskCustomers),
+            },
+          ].map((m) => (
+            <div key={m.label} className="rounded-lg border p-3">
+              <div className="text-xs text-muted-foreground">{m.label}</div>
+              <div className="mt-0.5 text-lg font-bold">{m.value}</div>
+            </div>
+          ))}
+        </div>
+
+        {weekly.warnings.length > 0 && (
+          <div className="mt-4">
+            <div className="mb-2 flex items-center gap-1.5 text-sm font-medium">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              Dikkat etmen gerekenler
+            </div>
+            <ul className="space-y-1">
+              {weekly.warnings.map((w, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+                  {w}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {weekly.recommendations.length > 0 && (
+          <div className="mt-4">
+            <div className="mb-2 flex items-center gap-1.5 text-sm font-medium">
+              <Lightbulb className="h-4 w-4 text-primary" />
+              Öneriler
+            </div>
+            <ul className="space-y-1">
+              {weekly.recommendations.map((r, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                  {r}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
 
       {/* GELİR ANALİZİ */}
       <section className="rounded-xl border bg-card p-6">

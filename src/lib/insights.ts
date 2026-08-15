@@ -550,3 +550,147 @@ export function analyzeStaff(input: {
     : 0;
   return { enough, staff, avgRepeatRate };
 }
+
+// ============================================================
+// HAFTALIK İŞLETME RAPORU + ÖNERİLER — Faz 5
+// ============================================================
+
+export type WeeklyReport = {
+  revenue: number;
+  newCustomers: number;
+  atRiskCustomers: number;
+  totalAppointments: number;
+  cancellations: number;
+  avgSpend: number | null;
+  warnings: string[];
+  recommendations: string[];
+};
+
+export function buildWeeklyReport(input: {
+  now: Date;
+  startOfWeek: Date;
+  appointments: {
+    start_at: string;
+    status: string;
+    price: number | null;
+    customer_id: string;
+  }[];
+  packages: { type: string; price: number | null; purchased_at: string }[];
+  customersCreatedAt: string[];
+  churnCount: number;
+  packagesEndingCount: number;
+}): WeeklyReport {
+  const {
+    now,
+    startOfWeek,
+    appointments,
+    packages,
+    customersCreatedAt,
+    churnCount,
+    packagesEndingCount,
+  } = input;
+  const nowT = now.getTime();
+  const swT = startOfWeek.getTime();
+  const weekMs = 7 * DAY;
+
+  const wk = appointments.filter((a) => {
+    const t = new Date(a.start_at).getTime();
+    return t >= swT && t <= nowT;
+  });
+  const completed = wk.filter((a) => a.status === "completed");
+  const sessionSales = packages
+    .filter((p) => p.type !== "monthly")
+    .filter((p) => {
+      const t = new Date(p.purchased_at).getTime();
+      return t >= swT && t <= nowT;
+    })
+    .reduce((s, p) => s + (p.price ?? 0), 0);
+  const revenue =
+    completed.reduce((s, a) => s + (a.price ?? 0), 0) + sessionSales;
+  const cancellations = wk.filter(
+    (a) => a.status === "cancelled" || a.status === "no_show",
+  ).length;
+  const custs = new Set(completed.map((a) => a.customer_id));
+  const avgSpend = custs.size
+    ? Math.round(completed.reduce((s, a) => s + (a.price ?? 0), 0) / custs.size)
+    : null;
+  const newCustomers = customersCreatedAt.filter((c) => {
+    const t = new Date(c).getTime();
+    return t >= swT && t <= nowT;
+  }).length;
+
+  // Geçen hafta ortalama harcama (trend için)
+  const lastWk = appointments.filter((a) => {
+    const t = new Date(a.start_at).getTime();
+    return t >= swT - weekMs && t <= nowT - weekMs && a.status === "completed";
+  });
+  const lastCusts = new Set(lastWk.map((a) => a.customer_id));
+  const lastAvg = lastCusts.size
+    ? Math.round(lastWk.reduce((s, a) => s + (a.price ?? 0), 0) / lastCusts.size)
+    : null;
+
+  // Son 4 haftada görece boş gün
+  const fmt = new Intl.DateTimeFormat("tr-TR", {
+    timeZone: TR_TZ,
+    weekday: "long",
+  });
+  const byWd = new Map<string, number>();
+  const since = nowT - 28 * DAY;
+  for (const a of appointments) {
+    const t = new Date(a.start_at).getTime();
+    if (t < since || t > nowT || a.status === "cancelled") continue;
+    const n = fmt.format(new Date(a.start_at));
+    byWd.set(n, (byWd.get(n) ?? 0) + 1);
+  }
+  let lowWeekday: string | null = null;
+  if (byWd.size >= 3) {
+    let min = Infinity;
+    for (const [n, c] of byWd)
+      if (c < min) {
+        min = c;
+        lowWeekday = n;
+      }
+  }
+
+  const warnings: string[] = [];
+  if (churnCount > 0)
+    warnings.push(`${churnCount} müşteri normal ziyaret aralığını aştı.`);
+  if (lowWeekday)
+    warnings.push(`Son 4 haftada ${lowWeekday} günleri görece daha boş.`);
+  if (avgSpend != null && lastAvg != null && lastAvg > 0) {
+    const diff = Math.round(((avgSpend - lastAvg) / lastAvg) * 100);
+    if (diff <= -5)
+      warnings.push(
+        `Ortalama müşteri harcaması geçen haftaya göre %${Math.abs(diff)} düştü.`,
+      );
+  }
+
+  const recommendations: string[] = [];
+  if (churnCount > 0)
+    recommendations.push(
+      `Uzun süredir gelmeyen ${churnCount} müşteriye geri dönüş kampanyası oluşturabilirsiniz.`,
+    );
+  if (packagesEndingCount > 0)
+    recommendations.push(
+      `${packagesEndingCount} müşterinin paketi bitmek üzere; yenileme hatırlatması gönderebilirsiniz.`,
+    );
+  if (lowWeekday)
+    recommendations.push(
+      `${lowWeekday} günleri doluluk düşük; bu güne özel kampanya oluşturabilirsiniz.`,
+    );
+  if (avgSpend != null && lastAvg != null && lastAvg > 0 && avgSpend < lastAvg)
+    recommendations.push(
+      `Ortalama harcama düştü; paket veya ek hizmet önerisiyle sepeti büyütebilirsiniz.`,
+    );
+
+  return {
+    revenue,
+    newCustomers,
+    atRiskCustomers: churnCount,
+    totalAppointments: wk.length,
+    cancellations,
+    avgSpend,
+    warnings,
+    recommendations,
+  };
+}
