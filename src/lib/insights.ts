@@ -3,6 +3,7 @@
 // Faz 1: işletme özeti (dashboard). Sonraki fazlarda churn/gelir/hizmet/rapor eklenecek.
 
 import { formatPrice } from "@/lib/appointments";
+import { trMonthStart, TR_TZ } from "@/lib/time";
 
 export type InsightTone = "danger" | "warning" | "attention" | "success" | "muted";
 
@@ -228,4 +229,171 @@ export function analyzeChurn(input: {
     (a, b) => rank[a.risk] - rank[b.risk] || b.daysSince - a.daysSince,
   );
   return { enough: true, customers: result };
+}
+
+// ============================================================
+// GELİR ANALİZİ — Faz 3
+// Gelir tabanı: tamamlanan randevu ücretleri + seans paketi satışları.
+// (Aylık üyelik aidatları hariç — ay-üstü-ay trend için tutarlı taban.)
+// ============================================================
+
+export type RevenueInsight = {
+  enough: boolean;
+  monthRevenue: number;
+  prevMonthRevenue: number;
+  changePct: number | null;
+  topService: { name: string; revenue: number } | null;
+  avgSpend: number | null;
+  bestDay: { name: string; revenue: number } | null;
+};
+
+type RevAppt = {
+  status: string;
+  price: number | null;
+  start_at: string;
+  customer_id: string;
+  services: { name: string } | null;
+};
+type RevPkg = { type: string; price: number | null; purchased_at: string };
+
+export function analyzeRevenue(input: {
+  now: Date;
+  appointments: RevAppt[];
+  packages: RevPkg[];
+}): RevenueInsight {
+  const { now, appointments, packages } = input;
+  const ymNow = new Intl.DateTimeFormat("en-CA", {
+    timeZone: TR_TZ,
+    year: "numeric",
+    month: "2-digit",
+  }).format(now);
+  const y = Number(ymNow.slice(0, 4));
+  const m0 = Number(ymNow.slice(5, 7)) - 1;
+  const curStart = trMonthStart(y, m0);
+  const nextStart = trMonthStart(y, m0 + 1);
+  const prevStart = trMonthStart(y, m0 - 1);
+
+  const inRange = (iso: string, a: Date, b: Date) => {
+    const t = new Date(iso).getTime();
+    return t >= a.getTime() && t < b.getTime();
+  };
+  const rev = (a: Date, b: Date) =>
+    appointments
+      .filter((r) => r.status === "completed" && inRange(r.start_at, a, b))
+      .reduce((s, r) => s + (r.price ?? 0), 0) +
+    packages
+      .filter((p) => p.type !== "monthly" && inRange(p.purchased_at, a, b))
+      .reduce((s, p) => s + (p.price ?? 0), 0);
+
+  const monthRevenue = rev(curStart, nextStart);
+  const prevMonthRevenue = rev(prevStart, curStart);
+  const changePct =
+    prevMonthRevenue > 0
+      ? ((monthRevenue - prevMonthRevenue) / prevMonthRevenue) * 100
+      : null;
+
+  const monthAppts = appointments.filter(
+    (r) => r.status === "completed" && inRange(r.start_at, curStart, nextStart),
+  );
+  const enough = monthAppts.length >= 3;
+
+  let topService: { name: string; revenue: number } | null = null;
+  let avgSpend: number | null = null;
+  let bestDay: { name: string; revenue: number } | null = null;
+
+  if (enough) {
+    const byS = new Map<string, number>();
+    for (const r of monthAppts) {
+      const n = r.services?.name ?? "Diğer";
+      byS.set(n, (byS.get(n) ?? 0) + (r.price ?? 0));
+    }
+    for (const [name, revenue] of byS)
+      if (!topService || revenue > topService.revenue)
+        topService = { name, revenue };
+
+    const custs = new Set(monthAppts.map((r) => r.customer_id));
+    const total = monthAppts.reduce((s, r) => s + (r.price ?? 0), 0);
+    avgSpend = custs.size > 0 ? Math.round(total / custs.size) : null;
+
+    const fmt = new Intl.DateTimeFormat("tr-TR", {
+      timeZone: TR_TZ,
+      weekday: "long",
+    });
+    const byD = new Map<string, number>();
+    for (const r of monthAppts) {
+      const n = fmt.format(new Date(r.start_at));
+      byD.set(n, (byD.get(n) ?? 0) + (r.price ?? 0));
+    }
+    for (const [name, revenue] of byD)
+      if (!bestDay || revenue > bestDay.revenue) bestDay = { name, revenue };
+  }
+
+  return {
+    enough,
+    monthRevenue,
+    prevMonthRevenue,
+    changePct,
+    topService,
+    avgSpend,
+    bestDay,
+  };
+}
+
+// ============================================================
+// HİZMET ANALİZİ — Faz 3
+// ============================================================
+
+export type ServiceStat = {
+  name: string;
+  count: number;
+  revenue: number;
+  avgRevenue: number;
+  change30Pct: number | null; // son 30 gün vs önceki 30 gün (adet)
+};
+
+export function analyzeServices(input: {
+  now: Date;
+  appointments: {
+    status: string;
+    price: number | null;
+    start_at: string;
+    services: { name: string } | null;
+  }[];
+}): { enough: boolean; services: ServiceStat[]; top: ServiceStat | null; bottom: ServiceStat | null } {
+  const { now, appointments } = input;
+  const completed = appointments.filter((a) => a.status === "completed");
+  const enough = completed.length >= 5;
+
+  const nowT = now.getTime();
+  const d30 = 30 * DAY;
+  const map = new Map<
+    string,
+    { count: number; revenue: number; recent: number; prev: number }
+  >();
+  for (const a of completed) {
+    const n = a.services?.name ?? "Diğer";
+    const e = map.get(n) ?? { count: 0, revenue: 0, recent: 0, prev: 0 };
+    e.count++;
+    e.revenue += a.price ?? 0;
+    const t = new Date(a.start_at).getTime();
+    if (t >= nowT - d30) e.recent++;
+    else if (t >= nowT - 2 * d30) e.prev++;
+    map.set(n, e);
+  }
+  const services: ServiceStat[] = [...map.entries()]
+    .map(([name, e]) => ({
+      name,
+      count: e.count,
+      revenue: e.revenue,
+      avgRevenue: e.count ? Math.round(e.revenue / e.count) : 0,
+      change30Pct: e.prev > 0 ? Math.round(((e.recent - e.prev) / e.prev) * 100) : null,
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  return {
+    enough,
+    services,
+    top: services[0] ?? null,
+    bottom: services.length > 1 ? services[services.length - 1] : null,
+  };
 }
