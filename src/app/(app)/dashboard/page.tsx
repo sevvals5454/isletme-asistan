@@ -25,7 +25,12 @@ import {
   formatTrDate,
 } from "@/lib/time";
 import { WEEKDAY_LABELS } from "@/lib/hours";
-import { type CustomerPackage } from "@/lib/packages";
+import { type CustomerPackage, remainingSessions } from "@/lib/packages";
+import {
+  buildBusinessSummary,
+  TONE_DOT,
+  type SummaryLine,
+} from "@/lib/insights";
 import {
   buildNotifications,
   type NotificationItem,
@@ -126,6 +131,14 @@ export default async function DashboardPage() {
     (orgTpl as { message_templates?: Record<string, string> | null } | null)
       ?.message_templates ?? null;
 
+  // Onay bekleyen gelecek randevular (akıllı özet için).
+  const { count: awaitingConfirm } = await supabase
+    .from("appointments")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "scheduled")
+    .gt("start_at", now.toISOString())
+    .is("client_response", null);
+
   // Başlangıç rehberi durumu — hangi adımlar tamamlandı?
   const onboardingStatus: OnboardingStatus = {
     services: (servicesCount ?? 0) > 0,
@@ -194,6 +207,51 @@ export default async function DashboardPage() {
     templates: messageTemplates,
   });
 
+  // ---- Akıllı İşletme Özeti (Faz 1) ----
+  const INACTIVE_DAYS = 45;
+  // 1 seans kalan seans paketleri
+  const packagesEndingSoon = packagesForNotif.filter(
+    (p) => p.type === "session" && remainingSessions(p) === 1,
+  ).length;
+  // Eşik günü aşan, gelecek randevusu olmayan müşteriler
+  let inactiveCount = 0;
+  for (const [cid, iso] of lastVisit) {
+    if (futureCustomerIds.has(cid)) continue;
+    const days = Math.floor((now.getTime() - new Date(iso).getTime()) / 86400000);
+    if (days >= INACTIVE_DAYS) inactiveCount++;
+  }
+  // Bugünkü tahmini ciro + randevu sayısı
+  const todayRevenue = today
+    .filter((a) => a.status === "scheduled" || a.status === "completed")
+    .reduce((s, a) => s + (a.price ?? 0), 0);
+  const todayApptCount = today.filter((a) => a.status !== "cancelled").length;
+  // Bu hafta vs geçen hafta (aynı süre) randevu trendi
+  const weekMs = 7 * 86400000;
+  const nowT = now.getTime();
+  const swT = startOfWeek.getTime();
+  let thisWk = 0;
+  let lastWk = 0;
+  for (const a of (retentionAppts ?? []) as {
+    start_at: string;
+    status: AppointmentStatus;
+  }[]) {
+    if (a.status === "cancelled") continue;
+    const t = new Date(a.start_at).getTime();
+    if (t >= swT && t <= nowT) thisWk++;
+    else if (t >= swT - weekMs && t <= nowT - weekMs) lastWk++;
+  }
+  const weekTrendPct = lastWk > 0 ? ((thisWk - lastWk) / lastWk) * 100 : null;
+
+  const summary: SummaryLine[] = buildBusinessSummary({
+    packagesEndingSoon,
+    awaitingConfirm: awaitingConfirm ?? 0,
+    inactiveCount,
+    inactiveDays: INACTIVE_DAYS,
+    todayRevenue,
+    todayAppointments: todayApptCount,
+    weekTrendPct,
+  });
+
   // Bu hafta boş günler: business_hours'ta açık ama randevusuz + bugünden itibaren.
   const openByWeekday = new Map(
     ((hoursRows ?? []) as { weekday: number; is_open: boolean }[]).map((h) => [
@@ -256,24 +314,65 @@ export default async function DashboardPage() {
         />
       </div>
 
+      {/* Akıllı İşletme Özeti — bugün işletmende ne oluyor? */}
+      {summary.length > 0 && (
+        <div className="rounded-xl border bg-card p-6">
+          <div className="mb-3 flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <h2 className="font-semibold">Bugün işletmen için önemli olanlar</h2>
+          </div>
+          <ul className="space-y-2.5">
+            {summary.map((s, i) => {
+              const row = (
+                <span className="flex items-start gap-2.5 text-sm">
+                  <span
+                    className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${TONE_DOT[s.tone]}`}
+                  />
+                  <span className="flex-1">{s.text}</span>
+                </span>
+              );
+              return (
+                <li key={i}>
+                  {s.href ? (
+                    <Link
+                      href={s.href}
+                      className="block rounded-lg px-1 py-0.5 hover:bg-muted/50"
+                    >
+                      {row}
+                    </Link>
+                  ) : (
+                    <div className="px-1 py-0.5">{row}</div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
       {notifications.length > 0 && (
         <div className="rounded-xl border bg-card p-6">
           <div className="mb-1 flex items-center gap-2">
             <Bell className="h-4 w-4" />
-            <h2 className="font-semibold">Bugünkü aksiyonlar</h2>
+            <h2 className="font-semibold">Bugün ne yapmalısın?</h2>
             <span className="text-xs text-muted-foreground">
               ({notifications.length})
             </span>
           </div>
           <p className="mb-4 text-sm text-muted-foreground">
-            Bugün ne yapmalı: yaklaşan randevu/ödeme, bitmek üzere paket,
-            kaybetmek üzere müşteriler ve doğum günleri
+            Önem sırasına göre yapman gerekenler — her biri için hazır WhatsApp
+            mesajı
           </p>
           <ul className="space-y-2">
-            {notifications.map((n) => (
+            {notifications.slice(0, 5).map((n) => (
               <NotificationCard key={n.id} item={n} />
             ))}
           </ul>
+          {notifications.length > 5 && (
+            <p className="mt-3 text-xs text-muted-foreground">
+              +{notifications.length - 5} tane daha var
+            </p>
+          )}
         </div>
       )}
 
