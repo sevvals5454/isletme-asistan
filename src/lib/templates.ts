@@ -31,23 +31,23 @@ export const TEMPLATE_VARIABLES = [
 // NOT: Şablonlar "Merhaba [isim]," ile BAŞLAMAZ — isim otomatik eklenir (renderMessage).
 export const DEFAULT_TEMPLATES: Record<MessageKind, string> = {
   appointment_reminder:
-    "{tarih} {saat} {hizmet} randevunuzu hatırlatmak isteriz. Görüşmek üzere!\n\n{isletme}",
+    "{tarih} saat {saat} {hizmet} randevunuzu hatırlatmak istedik 😊 Sizi aramızda görmek için sabırsızlanıyoruz. Bir aksilik olursa haber vermeniz yeterli!\n\n{isletme}",
   appointment_soon:
-    "bugünkü randevunuzun saati ({saat}) yaklaşıyor. Katılım durumunuzu teyit edebilir misiniz?\n\n{isletme}",
+    "bugün saat {saat}'teki randevunuza az kaldı 🙂 Sizi bekliyor olacağız. Gelemeyecek olursanız haber verirseniz seviniriz.\n\n{isletme}",
   payment_due:
-    "{paket} ödemenizin zamanı yaklaştı.\n{iban}\nDetaylar için bize ulaşabilirsiniz.\n\n{isletme}",
+    "{paket} için ödeme zamanınız yaklaştı 🙂 Dilerseniz aşağıdaki bilgilerden kolayca gönderebilirsiniz:\n{iban}\nHerhangi bir sorunuz olursa yazmanız yeterli.\n\n{isletme}",
   package_low:
-    "{paket} paketinizde {kalan} seans kaldı. Yenilemek veya yeni bir randevu planlamak ister misiniz?\n\n{isletme}",
+    "{paket} paketinizde son {kalan} seansınız kaldı 🙂 Dilerseniz hemen yenileyip kaldığınız yerden devam edelim. Size uygun bir gün ayarlamamı ister misiniz?\n\n{isletme}",
   makeup_offer:
-    "randevunuza gelemediğinizi gördük. Telafi için uygun bir gün belirleyelim mi?\n\n{isletme}",
+    "bugünkü randevunuza gelemediğinizi fark ettik, umarız her şey yolundadır 🙂 Dilerseniz telafi için size uygun bir gün birlikte ayarlayalım.\n\n{isletme}",
   win_back:
-    "bir süredir görüşemedik, sizi özledik! Size uygun bir gün ayarlayıp tekrar bekleriz. 💛\n\n{isletme}",
+    "sizi bir süredir göremedik, umarız iyisinizdir 💛 Yeniden aramızda görmek bizi çok mutlu eder. Size uygun bir güne birlikte bakalım mı?\n\n{isletme}",
   birthday:
-    "doğum gününüz kutlu olsun! 🎉 Nice mutlu, sağlıklı yıllara. Sizi görmek isteriz!\n\n{isletme}",
+    "iyi ki doğdunuz! 🎉 Nice sağlıklı, mutlu ve güzel senelere 🥳 Bu özel gününüzde sizi de aramızda görmek isteriz.\n\n{isletme}",
   review_request:
-    "ziyaretiniz nasıldı? Görüşleriniz bizim için çok değerli. Bir dakikanızı ayırıp değerlendirir misiniz? 🙏\n{link}\n\n{isletme}",
+    "ziyaretinizden memnun kaldınız mı, çok merak ediyoruz 🙂 Kısa bir değerlendirme bırakırsanız bizim için gerçekten çok kıymetli olur 🙏\n{link}\n\n{isletme}",
   confirm_request:
-    "{tarih} {saat} randevunuza katılımınızı onaylar mısınız? 👇\n{link}\n\n{isletme}",
+    "{tarih} saat {saat} randevunuzu onaylıyor musunuz? Aşağıdaki bağlantıdan tek dokunuşla teyit edebilirsiniz 👇\n{link}\n\n{isletme}",
 };
 
 // IBAN değişkeni için hazır satır üretir (boşsa "" döner → şablondan temizlenir).
