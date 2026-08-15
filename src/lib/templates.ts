@@ -31,7 +31,7 @@ export const TEMPLATE_VARIABLES = [
 // NOT: Şablonlar "Merhaba [isim]," ile BAŞLAMAZ — isim otomatik eklenir (renderMessage).
 export const DEFAULT_TEMPLATES: Record<MessageKind, string> = {
   appointment_reminder:
-    "{tarih} saat {saat} {hizmet} randevunuzu hatırlatmak istedik 😊 Sizi aramızda görmek için sabırsızlanıyoruz. Bir aksilik olursa haber vermeniz yeterli!\n\n{isletme}",
+    "{tarih} saat {saat} {hizmet} randevunuzu hatırlatmak istedik 😊 Sizi ağırlamayı çok isteriz. Bir aksilik olursa haber vermeniz yeterli!\n\n{isletme}",
   appointment_soon:
     "bugün saat {saat}'teki randevunuza az kaldı 🙂 Sizi bekliyor olacağız. Gelemeyecek olursanız haber verirseniz seviniriz.\n\n{isletme}",
   payment_due:
@@ -39,7 +39,7 @@ export const DEFAULT_TEMPLATES: Record<MessageKind, string> = {
   package_low:
     "{paket} paketinizde son {kalan} seansınız kaldı 🙂 Dilerseniz hemen yenileyip kaldığınız yerden devam edelim. Size uygun bir gün ayarlamamı ister misiniz?\n\n{isletme}",
   makeup_offer:
-    "bugünkü randevunuza gelemediğinizi fark ettik, umarız her şey yolundadır 🙂 Dilerseniz telafi için size uygun bir gün birlikte ayarlayalım.\n\n{isletme}",
+    "randevunuza gelemediğinizi fark ettik, umarız her şey yolundadır 🙂 Dilerseniz sizin için yeni ve uygun bir gün birlikte ayarlayalım.\n\n{isletme}",
   win_back:
     "sizi bir süredir göremedik, umarız iyisinizdir 💛 Yeniden aramızda görmek bizi çok mutlu eder. Size uygun bir güne birlikte bakalım mı?\n\n{isletme}",
   birthday:
