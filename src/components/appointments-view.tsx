@@ -28,7 +28,11 @@ import {
   formatAppointmentWhen as formatWhen,
   buildRecurringDates,
 } from "@/lib/appointments";
-import { whatsAppReminderUrl, buildReminderMessage } from "@/lib/phone";
+import {
+  whatsAppReminderUrl,
+  buildReminderMessage,
+  formatTurkishPhone,
+} from "@/lib/phone";
 import { trStartOfDay, trStartOfWeek, addDays } from "@/lib/time";
 import { availabilityWarning, type DayHours } from "@/lib/hours";
 import {
@@ -595,6 +599,10 @@ function AppointmentModal({
   const [packageId, setPackageId] = useState(editing?.package_id ?? "");
   const [staffId, setStaffId] = useState(editing?.staff_id ?? "");
   const [loading, setLoading] = useState(false);
+  // Yeni (kayıtlı olmayan) müşteriyi randevu anında ekleme
+  const [newMode, setNewMode] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newPhone, setNewPhone] = useState("");
 
   // Seçili müşterinin kullanılabilir paketleri.
   const customerPackages = packages.filter((p) => p.customer_id === customerId);
@@ -629,7 +637,13 @@ function AppointmentModal({
   }
 
   async function save() {
-    if (!customerId) {
+    const creatingNew = !isEdit && newMode;
+    if (creatingNew) {
+      if (!newName.trim()) {
+        toast.error("Müşteri adı gerekli");
+        return;
+      }
+    } else if (!customerId) {
       toast.error("Müşteri seçmelisin");
       return;
     }
@@ -691,12 +705,32 @@ function AppointmentModal({
       return;
     }
 
+    // Kayıtlı olmayan müşteri: önce müşteriyi oluştur, sonra randevuda kullan.
+    let effectiveCustomerId = customerId;
+    if (creatingNew) {
+      const { data: nc, error: ncErr } = await supabase
+        .from("customers")
+        .insert({
+          organization_id: orgId,
+          name: newName.trim(),
+          phone: newPhone.trim() || null,
+        })
+        .select("id")
+        .single();
+      if (ncErr) {
+        toast.error("Müşteri eklenemedi", { description: ncErr.message });
+        setLoading(false);
+        return;
+      }
+      effectiveCustomerId = nc.id;
+    }
+
     // Yeni: (tekrarlıysa) ortak seri kimliğiyle N satır ekle.
     const gid = count > 1 ? crypto.randomUUID() : null;
     const dates = buildRecurringDates(new Date(startAt), repeat, count);
     const rows = dates.map((d) => ({
       organization_id: orgId,
-      customer_id: customerId,
+      customer_id: effectiveCustomerId,
       service_id: serviceId || null,
       package_id: packageId || null,
       staff_id: staffId || null,
@@ -756,23 +790,58 @@ function AppointmentModal({
 
         <div className="space-y-4">
           <div className="space-y-1">
-            <label className="text-sm font-medium">Müşteri *</label>
-            <select
-              value={customerId}
-              onChange={(e) => onCustomerChange(e.target.value)}
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="">Müşteri seç…</option>
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            {customers.length === 0 && (
-              <p className="text-xs text-muted-foreground">
-                Önce müşteri eklemelisin.
-              </p>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">Müşteri *</label>
+              {!isEdit && (
+                <button
+                  type="button"
+                  onClick={() => setNewMode((v) => !v)}
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  {newMode ? "Kayıtlı müşteriden seç" : "+ Yeni müşteri"}
+                </button>
+              )}
+            </div>
+
+            {newMode && !isEdit ? (
+              <div className="space-y-2">
+                <input
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="Ad Soyad"
+                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                <input
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(formatTurkishPhone(e.target.value))}
+                  placeholder="0532 123 45 67"
+                  inputMode="tel"
+                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Bu müşteri kaydedilip randevuya eklenecek.
+                </p>
+              </div>
+            ) : (
+              <>
+                <select
+                  value={customerId}
+                  onChange={(e) => onCustomerChange(e.target.value)}
+                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">Müşteri seç…</option>
+                  {customers.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                {customers.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Kayıtlı müşteri yok — “+ Yeni müşteri” ile hemen ekleyebilirsin.
+                  </p>
+                )}
+              </>
             )}
           </div>
 
