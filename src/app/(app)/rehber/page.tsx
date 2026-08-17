@@ -1,11 +1,14 @@
 import {
   Rocket,
+  Sparkles,
   Users,
+  UserPlus,
   Calendar,
   CalendarDays,
   Package,
   RotateCcw,
   MessageCircle,
+  Bell,
   Send,
   Wallet,
   TrendingDown,
@@ -89,6 +92,52 @@ export default function RehberPage() {
         </p>
       </Section>
 
+      <Section
+        icon={<Sparkles className="h-4 w-4" />}
+        title="Akıllı Asistan (analiz & öneriler)"
+      >
+        <p>
+          Sol menüdeki <strong>Akıllı Asistan</strong>, işletmenin gerçek
+          verilerini analiz edip sana anlamlı çıkarımlar ve öneriler sunar
+          (hesap uydurmaz; veri az olduğunda “yeterli veri yok” der):
+        </p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>
+            <strong>Haftalık rapor:</strong> Ciro, yeni müşteri, randevu, iptal,
+            ortalama harcama + “dikkat etmen gerekenler” + öneriler.
+          </li>
+          <li>
+            <strong>Gelir analizi:</strong> Bu ay/geçen ay değişim, en çok
+            kazandıran hizmet ve gün, ortalama müşteri harcaması.
+          </li>
+          <li>
+            <strong>Hizmet analizi:</strong> Hangi hizmet ne kadar tercih
+            ediliyor, gelir getiriyor, son 30 günde arttı/azaldı.
+          </li>
+          <li>
+            <strong>Randevu risk analizi:</strong> Geçmiş iptal/gelmeme
+            davranışına göre yaklaşan randevularda düşük/orta/yüksek risk.
+          </li>
+          <li>
+            <strong>Personel performansı:</strong> Çalışan bazında randevu,
+            gelir, iptal ve tekrar gelen müşteri oranı.
+          </li>
+          <li>
+            <strong>Paket bitiş:</strong> Seansı bitmek üzere olanlar + tek tıkla
+            yenileme mesajı.
+          </li>
+          <li>
+            <strong>Müşteri kaybı:</strong> Düzenli gelirken uzaklaşan müşteriler
+            + tek tıkla kişiselleştirilmiş <em>geri kazanma mesajı</em>.
+          </li>
+        </ul>
+        <p>
+          Panelde ayrıca <strong>“Bugün işletmen için önemli olanlar”</strong>{" "}
+          özeti ve <strong>“Bugün ne yapmalısın?”</strong> öncelikli aksiyon
+          listesi çıkar.
+        </p>
+      </Section>
+
       <Section icon={<Users className="h-4 w-4" />} title="Müşteriler">
         <p>
           <strong>Müşteriler</strong> menüsünden ekle/düzenle. Her müşteride:
@@ -126,6 +175,14 @@ export default function RehberPage() {
           <li>
             <strong>Yeni randevu:</strong> Müşteri + hizmet seçince süre ve fiyat
             otomatik dolar. Tarih ve saati ayrı ayrı seçersin.
+          </li>
+          <li className="flex items-start gap-1.5">
+            <UserPlus className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              <strong>Kayıtlı olmayan müşteri:</strong> Randevu formunda “+ Yeni
+              müşteri” ile ad-telefon girip anında ekleyebilirsin; müşteri
+              kaydedilip randevuya bağlanır.
+            </span>
           </li>
           <li>
             <strong>Tekrarlayan randevu:</strong> “Haftalık / 2 haftada bir /
@@ -197,6 +254,14 @@ export default function RehberPage() {
           <li>Bu hafta doğum günü olanlar</li>
         </ul>
         <p>Butona basınca WhatsApp, hazır metinle açılır — sen sadece gönderirsin.</p>
+        <p className="flex items-start gap-1.5 pt-1">
+          <Bell className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            <strong>Canlı bildirim:</strong> Uygulama açıkken, bir randevunun
+            saati yaklaşınca ekrana “randevuya X dk kaldı” bildirimi düşer;
+            oradan tek tıkla hatırlatma gönderebilirsin.
+          </span>
+        </p>
       </Section>
 
       <Section icon={<Send className="h-4 w-4" />} title="Toplu mesaj">
@@ -286,6 +351,12 @@ export default function RehberPage() {
         <p>
           <strong>Verilerim güvende mi?</strong> Her işletme yalnızca kendi
           verisini görür; kayıtlar hesabına bağlıdır.
+        </p>
+        <p>
+          <strong>Güncellemeler nasıl geliyor?</strong> Otomatik. Yeni bir sürüm
+          yayınlandığında, uygulama açıksa ekranın altında{" "}
+          <strong>“Yeni sürüm hazır — Güncelle”</strong> butonu çıkar; tıklayınca
+          en güncel hâle geçersin. İndirme/güncelleme derdi yok.
         </p>
       </Section>
     </div>
