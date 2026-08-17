@@ -1,5 +1,4 @@
 import {
-  Sparkles,
   Scissors,
   Users,
   Wallet,
@@ -192,33 +191,6 @@ export default async function SettingsPage() {
             initialClosedDays={(closed ?? []) as ClosedDay[]}
           />
         )}
-      </section>
-
-      <section className="rounded-xl border bg-card p-6">
-        <div className="mb-4 flex items-center gap-2">
-          <Sparkles className="h-4 w-4" />
-          <h2 className="font-semibold">Plan</h2>
-        </div>
-        <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
-          <div>
-            <div className="text-sm font-medium capitalize">
-              {org?.plan ?? "free"} plan
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {org?.plan === "premium"
-                ? "Tüm özellikler ve öncelikli destek"
-                : "Temel özellikler — ücretsiz"}
-            </div>
-          </div>
-          {org?.plan !== "premium" && (
-            <button
-              disabled
-              className="rounded-lg border px-3 py-1.5 text-xs text-muted-foreground"
-            >
-              Yakında
-            </button>
-          )}
-        </div>
       </section>
 
       <section className="rounded-xl border bg-card p-6">
