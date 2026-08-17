@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
 
 // Build sırasında gömülen dağıtım kimliği (next.config env).
+// Not: yeni sürüm çıkınca açık sekmelerde "Güncelle" butonu belirir.
 const CURRENT = process.env.NEXT_PUBLIC_BUILD_ID || "dev";
 
 // Yeni sürüm yayınlanınca KALICI bir "Güncelle" butonu gösterir.
