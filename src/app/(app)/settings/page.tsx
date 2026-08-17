@@ -6,6 +6,7 @@ import {
   Clock,
   CalendarX,
   MessageSquare,
+  RefreshCw,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { OrgNameForm } from "@/components/org-name-form";
@@ -14,6 +15,7 @@ import { ServicesManager } from "@/components/services-manager";
 import { StaffManager } from "@/components/staff-manager";
 import { BusinessHoursManager } from "@/components/business-hours-manager";
 import { MessageTemplatesManager } from "@/components/message-templates-manager";
+import { UpdateButton } from "@/components/update-button";
 import {
   ClosedDaysManager,
   type ClosedDay,
@@ -217,6 +219,18 @@ export default async function SettingsPage() {
             </button>
           )}
         </div>
+      </section>
+
+      <section className="rounded-xl border bg-card p-6">
+        <div className="mb-1 flex items-center gap-2">
+          <RefreshCw className="h-4 w-4" />
+          <h2 className="font-semibold">Uygulama güncellemesi</h2>
+        </div>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Güncellemeler otomatik gelir. Yine de en son sürümde olduğundan emin
+          olmak istersen buradan kontrol edebilirsin.
+        </p>
+        <UpdateButton />
       </section>
 
       <section className="rounded-xl border bg-card p-6">
