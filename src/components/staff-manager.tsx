@@ -10,7 +10,11 @@ export type Staff = {
   id: string;
   name: string;
   active: boolean;
+  base_salary?: number | null;
+  commission_rate?: number | null;
 };
+
+const FULL_SELECT = "id, name, active, base_salary, commission_rate";
 
 export function StaffManager({
   orgId,
@@ -138,6 +142,16 @@ function StaffRowForm({
 }) {
   const router = useRouter();
   const [name, setName] = useState(staff?.name ?? "");
+  const [salary, setSalary] = useState(
+    staff?.base_salary != null && staff.base_salary > 0
+      ? String(staff.base_salary)
+      : "",
+  );
+  const [commission, setCommission] = useState(
+    staff?.commission_rate != null && staff.commission_rate > 0
+      ? String(staff.commission_rate)
+      : "",
+  );
   const [loading, setLoading] = useState(false);
 
   async function save() {
@@ -147,41 +161,50 @@ function StaffRowForm({
     }
     setLoading(true);
     const supabase = createClient();
-    if (staff) {
-      const { data, error } = await supabase
-        .from("staff")
-        .update({ name: name.trim() })
-        .eq("id", staff.id)
-        .select("id, name, active")
-        .single();
-      if (error) {
-        toast.error("Güncelleme başarısız", { description: error.message });
-        setLoading(false);
-        return;
-      }
-      toast.success("Çalışan güncellendi");
-      router.refresh();
-      onDone(data as Staff);
-    } else {
-      const { data, error } = await supabase
-        .from("staff")
-        .insert({ name: name.trim(), organization_id: orgId })
-        .select("id, name, active")
-        .single();
-      if (error) {
-        toast.error("Ekleme başarısız", { description: error.message });
-        setLoading(false);
-        return;
-      }
-      toast.success("Çalışan eklendi");
-      router.refresh();
-      onDone(data as Staff);
+    const full = {
+      name: name.trim(),
+      base_salary: salary.trim() === "" ? 0 : Number(salary),
+      commission_rate: commission.trim() === "" ? 0 : Number(commission),
+    };
+
+    // Migration 016 yoksa (maaş/prim kolonları) sadece ismi kaydet — kırılmasın.
+    async function run(withPay: boolean): Promise<{
+      data: Staff | null;
+      error: { message: string } | null;
+    }> {
+      const payload = withPay ? full : { name: full.name };
+      const sel = withPay ? FULL_SELECT : "id, name, active";
+      const q = staff
+        ? supabase.from("staff").update(payload).eq("id", staff.id)
+        : supabase.from("staff").insert({ ...payload, organization_id: orgId });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (await (q.select(sel).single() as any)) as {
+        data: Staff | null;
+        error: { message: string } | null;
+      };
     }
+
+    let res = await run(true);
+    if (res.error && /column|schema|base_salary|commission/i.test(res.error.message)) {
+      res = await run(false);
+      if (!res.error)
+        toast.info("Maaş/prim için güncelleme (016) gerekli; şimdilik sadece isim kaydedildi.");
+    }
+    if (res.error) {
+      toast.error(staff ? "Güncelleme başarısız" : "Ekleme başarısız", {
+        description: res.error.message,
+      });
+      setLoading(false);
+      return;
+    }
+    toast.success(staff ? "Çalışan güncellendi" : "Çalışan eklendi");
+    router.refresh();
+    onDone(res.data as Staff);
   }
 
   return (
-    <div className="flex items-end gap-2 p-2">
-      <div className="flex-1 space-y-1">
+    <div className="space-y-2 p-2">
+      <div className="space-y-1">
         <label className="text-xs text-muted-foreground">Çalışan adı</label>
         <input
           type="text"
@@ -191,25 +214,55 @@ function StaffRowForm({
           className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
       </div>
-      <button
-        onClick={save}
-        disabled={loading}
-        className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
-      >
-        {loading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Check className="h-4 w-4" />
-        )}
-        Kaydet
-      </button>
-      <button
-        onClick={() => onDone(null)}
-        className="rounded-lg border px-3 py-2 text-sm hover:bg-muted"
-        aria-label="İptal"
-      >
-        <X className="h-4 w-4" />
-      </button>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground">Maaş (₺/ay)</label>
+          <input
+            type="number"
+            inputMode="numeric"
+            value={salary}
+            onChange={(e) => setSalary(e.target.value)}
+            placeholder="0"
+            className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground">Prim (%)</label>
+          <input
+            type="number"
+            inputMode="numeric"
+            value={commission}
+            onChange={(e) => setCommission(e.target.value)}
+            placeholder="0"
+            className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Prim, o çalışanın getirdiği tamamlanan randevu gelirinin yüzdesidir
+        (bordroda hesaplanır). İkisi de opsiyonel.
+      </p>
+      <div className="flex gap-2">
+        <button
+          onClick={save}
+          disabled={loading}
+          className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+        >
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Check className="h-4 w-4" />
+          )}
+          Kaydet
+        </button>
+        <button
+          onClick={() => onDone(null)}
+          className="rounded-lg border px-3 py-2 text-sm hover:bg-muted"
+          aria-label="İptal"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
     </div>
   );
 }

@@ -63,21 +63,40 @@ export default async function SettingsPage() {
       } | null)?.message_templates ?? {};
   }
 
-  const [{ data: services }, { data: staff }, { data: hours }] =
-    await Promise.all([
-      supabase
-        .from("services")
-        .select("id, name, duration_min, price, active")
-        .order("created_at", { ascending: true }),
-      supabase
+  const [{ data: services }, { data: hours }] = await Promise.all([
+    supabase
+      .from("services")
+      .select("id, name, duration_min, price, active")
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("business_hours")
+      .select("weekday, is_open, open_time, close_time")
+      .order("weekday", { ascending: true }),
+  ]);
+
+  // Çalışanlar — maaş/prim kolonları yoksa (migration 016) geri düş.
+  let staff: {
+    id: string;
+    name: string;
+    active: boolean;
+    base_salary?: number | null;
+    commission_rate?: number | null;
+  }[] = [];
+  {
+    const withPay = await supabase
+      .from("staff")
+      .select("id, name, active, base_salary, commission_rate")
+      .order("created_at", { ascending: true });
+    if (withPay.error) {
+      const fb = await supabase
         .from("staff")
         .select("id, name, active")
-        .order("created_at", { ascending: true }),
-      supabase
-        .from("business_hours")
-        .select("weekday, is_open, open_time, close_time")
-        .order("weekday", { ascending: true }),
-    ]);
+        .order("created_at", { ascending: true });
+      staff = (fb.data ?? []) as typeof staff;
+    } else {
+      staff = (withPay.data ?? []) as unknown as typeof staff;
+    }
+  }
 
   // Kapalı günler + personel izinleri — staff_id kolonu yoksa (migration 016
   // çalışmadıysa) staff_id'siz geri düş (mevcut kayıtlar kaybolmaz).

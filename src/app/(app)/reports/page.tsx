@@ -180,6 +180,47 @@ export default async function ReportsPage({
     (a, b) => b[1].revenue - a[1].revenue,
   );
 
+  // Personel bordrosu (maaş + prim) — kolonlar yoksa (migration 016) boş kalır.
+  let payroll: {
+    name: string;
+    revenue: number;
+    salary: number;
+    rate: number;
+    commission: number;
+    total: number;
+  }[] = [];
+  {
+    const res = await supabase
+      .from("staff")
+      .select("name, base_salary, commission_rate");
+    if (!res.error && res.data) {
+      payroll = (
+        res.data as {
+          name: string;
+          base_salary: number | null;
+          commission_rate: number | null;
+        }[]
+      )
+        .map((s) => {
+          const revenue = staffStats.get(s.name)?.revenue ?? 0;
+          const salary = s.base_salary ?? 0;
+          const rate = s.commission_rate ?? 0;
+          const commission = Math.round((revenue * rate) / 100);
+          return {
+            name: s.name,
+            revenue,
+            salary,
+            rate,
+            commission,
+            total: salary + commission,
+          };
+        })
+        .filter((p) => p.salary > 0 || p.rate > 0)
+        .sort((a, b) => b.total - a.total);
+    }
+  }
+  const payrollTotal = payroll.reduce((s, p) => s + p.total, 0);
+
   const monthLabel = new Date(Date.UTC(year, month0, 1)).toLocaleDateString(
     "tr-TR",
     { month: "long", year: "numeric", timeZone: "UTC" },
@@ -333,6 +374,63 @@ export default async function ReportsPage({
                   </tr>
                 ))}
               </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {payroll.length > 0 && (
+        <div className="rounded-xl border bg-card p-6">
+          <div className="mb-1 flex items-center gap-2">
+            <Banknote className="h-4 w-4" />
+            <h2 className="font-semibold">Personel bordrosu ({monthLabel})</h2>
+          </div>
+          <p className="mb-4 text-sm text-muted-foreground">
+            Maaş + prim (primi olanlar için: getirdiği tamamlanan randevu
+            gelirinin %&apos;si)
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[460px] text-sm">
+              <thead className="border-b text-left text-xs text-muted-foreground">
+                <tr>
+                  <th className="py-2 pr-3 font-medium">Çalışan</th>
+                  <th className="py-2 pr-3 font-medium">Gelir</th>
+                  <th className="py-2 pr-3 font-medium">Prim</th>
+                  <th className="py-2 pr-3 font-medium">Maaş</th>
+                  <th className="py-2 text-right font-medium">Toplam</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {payroll.map((p) => (
+                  <tr key={p.name}>
+                    <td className="py-2 pr-3 font-medium">{p.name}</td>
+                    <td className="py-2 pr-3 text-muted-foreground">
+                      {formatPrice(p.revenue)}
+                    </td>
+                    <td className="py-2 pr-3 text-muted-foreground">
+                      {p.rate > 0
+                        ? `${formatPrice(p.commission)} (%${p.rate})`
+                        : "—"}
+                    </td>
+                    <td className="py-2 pr-3 text-muted-foreground">
+                      {p.salary > 0 ? formatPrice(p.salary) : "—"}
+                    </td>
+                    <td className="py-2 text-right font-semibold">
+                      {formatPrice(p.total)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="border-t">
+                <tr>
+                  <td className="py-2 pr-3 font-medium" colSpan={4}>
+                    Toplam ödenecek
+                  </td>
+                  <td className="py-2 text-right font-bold text-primary">
+                    {formatPrice(payrollTotal)}
+                  </td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         </div>
