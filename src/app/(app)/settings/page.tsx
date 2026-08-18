@@ -63,7 +63,7 @@ export default async function SettingsPage() {
       } | null)?.message_templates ?? {};
   }
 
-  const [{ data: services }, { data: staff }, { data: hours }, { data: closed }] =
+  const [{ data: services }, { data: staff }, { data: hours }] =
     await Promise.all([
       supabase
         .from("services")
@@ -77,11 +77,26 @@ export default async function SettingsPage() {
         .from("business_hours")
         .select("weekday, is_open, open_time, close_time")
         .order("weekday", { ascending: true }),
-      supabase
+    ]);
+
+  // Kapalı günler + personel izinleri — staff_id kolonu yoksa (migration 016
+  // çalışmadıysa) staff_id'siz geri düş (mevcut kayıtlar kaybolmaz).
+  let closed: ClosedDay[] = [];
+  {
+    const withStaff = await supabase
+      .from("closed_days")
+      .select("id, date, reason, staff_id")
+      .order("date", { ascending: true });
+    if (withStaff.error) {
+      const fallback = await supabase
         .from("closed_days")
         .select("id, date, reason")
-        .order("date", { ascending: true }),
-    ]);
+        .order("date", { ascending: true });
+      closed = (fallback.data ?? []) as ClosedDay[];
+    } else {
+      closed = (withStaff.data ?? []) as unknown as ClosedDay[];
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -180,15 +195,17 @@ export default async function SettingsPage() {
       <section className="rounded-xl border bg-card p-6">
         <div className="mb-1 flex items-center gap-2">
           <CalendarX className="h-4 w-4" />
-          <h2 className="font-semibold">Kapalı günler</h2>
+          <h2 className="font-semibold">Kapalı günler & personel izni</h2>
         </div>
         <p className="mb-4 text-sm text-muted-foreground">
-          Tatil/izin gibi belirli kapalı tarihler
+          Resmi tatil/işletme kapalı günleri veya bir çalışanın izinli/gelemediği
+          günler (sebebiyle). Puantaj/kontrol için kayıt altında kalır.
         </p>
         {org && (
           <ClosedDaysManager
             orgId={org.id}
             initialClosedDays={(closed ?? []) as ClosedDay[]}
+            staff={(staff ?? []).map((s) => ({ id: s.id, name: s.name }))}
           />
         )}
       </section>
