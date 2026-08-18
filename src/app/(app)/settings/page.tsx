@@ -6,8 +6,11 @@ import {
   CalendarX,
   MessageSquare,
   RefreshCw,
+  Globe,
 } from "lucide-react";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { OnlineBookingSettings } from "@/components/online-booking-settings";
 import { OrgNameForm } from "@/components/org-name-form";
 import { OrgIbanForm } from "@/components/org-iban-form";
 import { ServicesManager } from "@/components/services-manager";
@@ -62,6 +65,23 @@ export default async function SettingsPage() {
         message_templates?: Partial<Record<MessageKind, string>> | null;
       } | null)?.message_templates ?? {};
   }
+
+  // Online randevu (migration 017 yoksa dayanıklı: kapalı varsayılır).
+  let bookingEnabled = false;
+  if (org) {
+    const { data } = await supabase
+      .from("organizations")
+      .select("online_booking_enabled")
+      .eq("id", org.id)
+      .single();
+    bookingEnabled =
+      (data as { online_booking_enabled?: boolean } | null)
+        ?.online_booking_enabled ?? false;
+  }
+  const hdrs = await headers();
+  const host = hdrs.get("host");
+  const proto = hdrs.get("x-forwarded-proto") ?? "https";
+  const bookingUrl = org && host ? `${proto}://${host}/b/${org.id}` : "";
 
   const [{ data: services }, { data: hours }] = await Promise.all([
     supabase
@@ -166,6 +186,25 @@ export default async function SettingsPage() {
           <MessageTemplatesManager
             orgId={org.id}
             initial={messageTemplates}
+          />
+        )}
+      </section>
+
+      <section className="rounded-xl border bg-card p-6">
+        <div className="mb-1 flex items-center gap-2">
+          <Globe className="h-4 w-4" />
+          <h2 className="font-semibold">Online randevu</h2>
+        </div>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Müşteriler bu linkten kendi randevusunu alır (7/24). Randevular panelinize
+          &quot;Online&quot; etiketiyle düşer. Hizmet ve çalışma saatlerinizi
+          eklediğinizden emin olun.
+        </p>
+        {org && (
+          <OnlineBookingSettings
+            orgId={org.id}
+            bookingUrl={bookingUrl}
+            initialEnabled={bookingEnabled}
           />
         )}
       </section>

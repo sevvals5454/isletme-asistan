@@ -36,12 +36,13 @@ export async function updateSession(request: NextRequest) {
   // Girişsiz erişilebilen yasal/bilgi sayfaları
   const legalRoutes = ["/gizlilik", "/kullanim-kosullari", "/kvkk"];
   const isLegalRoute = legalRoutes.some((r) => pathname.startsWith(r));
-  // /r/... → müşteri randevu onay sayfası (girişsiz, herkese açık)
+  // /r/... → randevu onay · /b/... → online randevu (ikisi de girişsiz, herkese açık)
   const isPublicRoute =
     pathname === "/" ||
     isAuthRoute ||
     isLegalRoute ||
-    pathname.startsWith("/r/");
+    pathname.startsWith("/r/") ||
+    pathname.startsWith("/b/");
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
