@@ -70,18 +70,6 @@ function isoToLocalInput(iso: string): string {
 const APPT_SELECT =
   "id, start_at, duration_min, status, price, notes, customer_id, service_id, package_id, staff_id, recurrence_group_id, confirm_token, client_response, customers(name, phone), services(name), staff(name)";
 
-// Saat seçimi için 07:00–22:00 arası 15 dakikalık dilimler.
-const TIME_SLOTS: string[] = (() => {
-  const out: string[] = [];
-  for (let h = 7; h <= 22; h++) {
-    for (const m of [0, 15, 30, 45]) {
-      if (h === 22 && m > 0) break;
-      out.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
-    }
-  }
-  return out;
-})();
-
 type CustomerOption = { id: string; name: string };
 type StaffOption = { id: string; name: string };
 type ServiceOption = {
@@ -115,6 +103,7 @@ export function AppointmentsView({
   baseUrl,
   openNewAt,
   templates,
+  staffLeaves,
 }: {
   orgId: string;
   initialAppointments: Appointment[];
@@ -129,6 +118,7 @@ export function AppointmentsView({
   baseUrl: string; // onay linki için (https://.../r/token)
   openNewAt?: string; // takvimden gelen tarih (YYYY-MM-DD) → modalı aç
   templates?: Partial<Record<MessageKind, string>> | null;
+  staffLeaves?: Record<string, string[]>; // çalışan izin günleri (staffId → tarihler)
 }) {
   const router = useRouter();
   // Özel şablonlar (yoksa varsayılan); isim otomatik eklenir.
@@ -496,6 +486,7 @@ export function AppointmentsView({
           staff={staff}
           hours={hours}
           closedDays={closedDays}
+          staffLeaves={staffLeaves}
           editing={editingAppt}
           initialDate={editingAppt ? undefined : openNewAt}
           onClose={closeModal}
@@ -556,6 +547,7 @@ function AppointmentModal({
   staff,
   hours,
   closedDays,
+  staffLeaves,
   editing,
   initialDate,
   onClose,
@@ -569,6 +561,7 @@ function AppointmentModal({
   staff: StaffOption[];
   hours: DayHours[];
   closedDays: string[];
+  staffLeaves?: Record<string, string[]>;
   editing?: Appointment | null;
   initialDate?: string;
   onClose: () => void;
@@ -766,6 +759,25 @@ function AppointmentModal({
     ? availabilityWarning(new Date(startAt), hours, new Set(closedDays))
     : null;
 
+  // İzinli personel uyarısı: seçili çalışan o tarihte izinliyse bilgi ver.
+  const staffLeaveWarning =
+    staffId && dateVal && staffLeaves?.[staffId]?.includes(dateVal)
+      ? "Seçtiğin çalışan bu gün izinli görünüyor."
+      : null;
+
+  // Saat seçimi: şık iki küçük dropdown (saat : dakika).
+  const [selHour, selMin] = (timeVal || "09:00").split(":");
+  const HOUR_OPTS = (() => {
+    const base = Array.from({ length: 16 }, (_, i) =>
+      String(7 + i).padStart(2, "0"),
+    ); // 07–22
+    return base.includes(selHour) ? base : [selHour, ...base].sort();
+  })();
+  const MIN_OPTS = (() => {
+    const base = ["00", "15", "30", "45"];
+    return base.includes(selMin) ? base : [selMin, ...base].sort();
+  })();
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
@@ -923,25 +935,42 @@ function AppointmentModal({
                 className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="Tarih"
               />
-              <select
-                value={timeVal}
-                onChange={(e) => setTimeVal(e.target.value)}
-                className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label="Saat"
-              >
-                {(TIME_SLOTS.includes(timeVal)
-                  ? TIME_SLOTS
-                  : [timeVal, ...TIME_SLOTS]
-                ).map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center gap-1.5">
+                <select
+                  value={selHour}
+                  onChange={(e) => setTimeVal(`${e.target.value}:${selMin}`)}
+                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label="Saat"
+                >
+                  {HOUR_OPTS.map((h) => (
+                    <option key={h} value={h}>
+                      {h}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-muted-foreground">:</span>
+                <select
+                  value={selMin}
+                  onChange={(e) => setTimeVal(`${selHour}:${e.target.value}`)}
+                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label="Dakika"
+                >
+                  {MIN_OPTS.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             {availWarning && (
               <p className="text-xs text-amber-600 dark:text-amber-500">
                 ⚠️ {availWarning}
+              </p>
+            )}
+            {staffLeaveWarning && (
+              <p className="text-xs text-amber-600 dark:text-amber-500">
+                ⚠️ {staffLeaveWarning}
               </p>
             )}
           </div>

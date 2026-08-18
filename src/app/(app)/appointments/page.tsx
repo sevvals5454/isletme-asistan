@@ -73,9 +73,20 @@ export default async function AppointmentsPage({
     supabase
       .from("business_hours")
       .select("weekday, is_open, open_time, close_time"),
-    supabase.from("closed_days").select("date"),
+    supabase.from("closed_days").select("date, staff_id"),
     supabase.from("organizations").select("name").single(),
   ]);
+
+  // Kapalı günler: staff_id yoksa tüm işletme kapalı; doluysa o çalışan izinli.
+  const closedRows = (closedDays ?? []) as {
+    date: string;
+    staff_id: string | null;
+  }[];
+  const orgClosedDates = closedRows.filter((r) => !r.staff_id).map((r) => r.date);
+  const staffLeaves: Record<string, string[]> = {};
+  for (const r of closedRows) {
+    if (r.staff_id) (staffLeaves[r.staff_id] ??= []).push(r.date);
+  }
 
   // Opsiyonel/yeni kolonlar (migration çalışmamış olabilir) — hata olursa varsayılana düş.
   const { data: orgExtra } = await supabase
@@ -121,7 +132,8 @@ export default async function AppointmentsPage({
       packages={usablePackages}
       staff={staff ?? []}
       hours={(hours ?? []) as never}
-      closedDays={((closedDays ?? []) as { date: string }[]).map((d) => d.date)}
+      closedDays={orgClosedDates}
+      staffLeaves={staffLeaves}
       orgName={org?.name ?? ""}
       reviewUrl={reviewUrl}
       baseUrl={baseUrl}
