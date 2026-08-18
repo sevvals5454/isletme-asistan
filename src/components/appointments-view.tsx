@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus,
@@ -129,6 +129,28 @@ export function AppointmentsView({
   const [staffFilter, setStaffFilter] = useState("");
   const [modalOpen, setModalOpen] = useState(!!openNewAt);
   const [editingAppt, setEditingAppt] = useState<Appointment | null>(null);
+
+  // Otomatik senkron: online/yeni randevular kendiliğinden gelsin (yenilemeye gerek yok).
+  // 30 sn'de bir + sekmeye dönünce listeyi tazeler. setState yalnızca await sonrası.
+  useEffect(() => {
+    const supabase = createClient();
+    let active = true;
+    async function sync() {
+      const { data } = await supabase
+        .from("appointments")
+        .select(APPT_SELECT)
+        .order("start_at", { ascending: false });
+      if (active && data) setAppointments(data as unknown as Appointment[]);
+    }
+    const interval = setInterval(sync, 30000);
+    const onFocus = () => sync();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      active = false;
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, []);
 
   function closeModal() {
     setModalOpen(false);
