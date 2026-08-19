@@ -790,14 +790,10 @@ function AppointmentModal({
   // Saat seçimi: şık iki küçük dropdown (saat : dakika).
   const [selHour, selMin] = (timeVal || "09:00").split(":");
   const HOUR_OPTS = (() => {
-    const base = Array.from({ length: 16 }, (_, i) =>
-      String(7 + i).padStart(2, "0"),
-    ); // 07–22
+    const base = Array.from({ length: 18 }, (_, i) =>
+      String(6 + i).padStart(2, "0"),
+    ); // 06–23
     return base.includes(selHour) ? base : [selHour, ...base].sort();
-  })();
-  const MIN_OPTS = (() => {
-    const base = ["00", "15", "30", "45"];
-    return base.includes(selMin) ? base : [selMin, ...base].sort();
   })();
 
   return (
@@ -971,18 +967,19 @@ function AppointmentModal({
                   ))}
                 </select>
                 <span className="text-muted-foreground">:</span>
-                <select
+                <input
+                  type="text"
+                  inputMode="numeric"
                   value={selMin}
-                  onChange={(e) => setTimeVal(`${selHour}:${e.target.value}`)}
+                  onChange={(e) => {
+                    let v = e.target.value.replace(/[^0-9]/g, "").slice(0, 2);
+                    if (v !== "" && Number(v) > 59) v = "59";
+                    setTimeVal(`${selHour}:${(v || "0").padStart(2, "0")}`);
+                  }}
                   className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   aria-label="Dakika"
-                >
-                  {MIN_OPTS.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="dk"
+                />
               </div>
             </div>
             {availWarning && (
