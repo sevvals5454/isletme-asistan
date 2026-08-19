@@ -42,7 +42,8 @@ export async function updateSession(request: NextRequest) {
     isAuthRoute ||
     isLegalRoute ||
     pathname.startsWith("/r/") ||
-    pathname.startsWith("/b/");
+    pathname.startsWith("/b/") ||
+    pathname.startsWith("/api/push/run"); // cron (secret ile korumalı)
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();

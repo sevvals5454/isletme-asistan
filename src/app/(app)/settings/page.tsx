@@ -7,10 +7,12 @@ import {
   MessageSquare,
   RefreshCw,
   Globe,
+  Bell,
 } from "lucide-react";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { OnlineBookingSettings } from "@/components/online-booking-settings";
+import { PushToggle } from "@/components/push-toggle";
 import { OrgNameForm } from "@/components/org-name-form";
 import { OrgIbanForm } from "@/components/org-iban-form";
 import { ServicesManager } from "@/components/services-manager";
@@ -266,6 +268,18 @@ export default async function SettingsPage() {
             staff={(staff ?? []).map((s) => ({ id: s.id, name: s.name }))}
           />
         )}
+      </section>
+
+      <section className="rounded-xl border bg-card p-6">
+        <div className="mb-1 flex items-center gap-2">
+          <Bell className="h-4 w-4" />
+          <h2 className="font-semibold">Bildirimler</h2>
+        </div>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Telefonuna “randevu yaklaştı” gibi bildirimler gelsin (uygulama kapalıyken
+          bile). İzin verdiğin cihazlara gönderilir.
+        </p>
+        <PushToggle />
       </section>
 
       <section className="rounded-xl border bg-card p-6">
