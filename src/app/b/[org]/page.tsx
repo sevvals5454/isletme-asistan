@@ -255,7 +255,7 @@ export default function BookingPage() {
                 Bu gün için uygun saat yok. Lütfen başka bir gün seçin.
               </p>
             ) : (
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                 {slots.map((t) => (
                   <button
                     key={t}

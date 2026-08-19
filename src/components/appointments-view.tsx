@@ -802,11 +802,11 @@ function AppointmentModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/40 p-4"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-xl border bg-card p-6 shadow-lg"
+        className="mx-auto my-8 w-full max-w-md rounded-xl border bg-card p-6 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
@@ -949,7 +949,7 @@ function AppointmentModal({
 
           <div className="space-y-1">
             <label className="text-sm font-medium">Tarih ve saat *</label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <input
                 type="date"
                 value={dateVal}
