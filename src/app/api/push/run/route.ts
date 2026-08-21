@@ -106,5 +106,56 @@ export async function GET(req: Request) {
       .eq("id", a.id);
   }
 
-  return Response.json({ ok: true, checked: list.length, sent });
+  // Takip zamanı gelen notlar → push (notes tablosu/kolonu yoksa sessizce geç).
+  let notesSent = 0;
+  try {
+    const { data: notes, error: nErr } = await admin
+      .from("notes")
+      .select("id, content, organization_id")
+      .not("remind_at", "is", null)
+      .lte("remind_at", new Date().toISOString())
+      .is("push_sent_at", null);
+    if (!nErr) {
+      for (const n of (notes ?? []) as {
+        id: string;
+        content: string;
+        organization_id: string;
+      }[]) {
+        const subs = await subsFor(n.organization_id);
+        const body =
+          n.content.length > 120 ? n.content.slice(0, 120) + "…" : n.content;
+        const payload = JSON.stringify({
+          title: "Not hatırlatması 📝",
+          body,
+          url: "/notlar",
+        });
+        for (const s of subs) {
+          try {
+            await webpush.sendNotification(
+              { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+              payload,
+            );
+            notesSent++;
+          } catch (e: unknown) {
+            const code = (e as { statusCode?: number })?.statusCode;
+            if (code === 404 || code === 410) {
+              await admin.from("push_subscriptions").delete().eq("id", s.id);
+            }
+          }
+        }
+        await admin
+          .from("notes")
+          .update({ push_sent_at: new Date().toISOString() })
+          .eq("id", n.id);
+      }
+    }
+  } catch {
+    // notes push atlandı
+  }
+
+  return Response.json({
+    ok: true,
+    checked: list.length,
+    sent: sent + notesSent,
+  });
 }
