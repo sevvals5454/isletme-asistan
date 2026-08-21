@@ -4,6 +4,7 @@ import { Sidebar } from "@/components/sidebar";
 import { UpdateNotifier } from "@/components/update-notifier";
 import { AppointmentSoonNotifier } from "@/components/appointment-soon-notifier";
 import { PushPrompt } from "@/components/push-prompt";
+import { WelcomeTour } from "@/components/welcome-tour";
 
 export default async function AppLayout({
   children,
@@ -41,6 +42,7 @@ export default async function AppLayout({
 
   return (
     <div className="min-h-screen bg-background">
+      <WelcomeTour />
       <UpdateNotifier />
       <AppointmentSoonNotifier orgName={orgName} templates={messageTemplates} />
       <Sidebar orgName={orgName} userEmail={user.email ?? ""} />

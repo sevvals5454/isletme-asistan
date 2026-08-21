@@ -33,7 +33,9 @@ export function PushPrompt() {
         typeof Notification !== "undefined" &&
         Notification.permission !== "granted";
       const dismissed = localStorage.getItem(DISMISS_KEY) === "1";
-      setShow(supported && notGranted && !dismissed);
+      // Tanıtım turu bitmeden şeridi gösterme (tur zaten bildirim adımı içeriyor).
+      const tourDone = localStorage.getItem("welcome-tour-v1") === "1";
+      setShow(supported && notGranted && !dismissed && tourDone);
     })();
     return () => {
       active = false;

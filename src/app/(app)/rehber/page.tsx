@@ -18,6 +18,7 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { type ReactNode } from "react";
+import { TourReplayButton } from "@/components/tour-replay-button";
 
 function Section({
   icon,
@@ -55,11 +56,14 @@ function Step({ n, children }: { n: number; children: ReactNode }) {
 export default function RehberPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Kullanım kılavuzu</h1>
-        <p className="text-sm text-muted-foreground">
-          Uygulamanın tüm özellikleri, adım adım. Aradığın bölüme in.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">Kullanım kılavuzu</h1>
+          <p className="text-sm text-muted-foreground">
+            Uygulamanın tüm özellikleri, adım adım. Aradığın bölüme in.
+          </p>
+        </div>
+        <TourReplayButton />
       </div>
 
       <Section icon={<Rocket className="h-4 w-4" />} title="Hızlı başlangıç">
