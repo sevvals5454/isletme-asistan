@@ -2,12 +2,25 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus, Trash2, Pencil, Check, X } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  Trash2,
+  Pencil,
+  Check,
+  X,
+  CalendarClock,
+} from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { formatTrDate, formatTrTime } from "@/lib/time";
+import { formatTrDate, formatTrTime, trDateKey } from "@/lib/time";
 
-export type Note = { id: string; content: string; created_at: string };
+export type Note = {
+  id: string;
+  content: string;
+  created_at: string;
+  remind_at?: string | null;
+};
 
 export function NotesView({
   orgId,
@@ -19,6 +32,8 @@ export function NotesView({
   const router = useRouter();
   const [notes, setNotes] = useState<Note[]>(initialNotes);
   const [draft, setDraft] = useState("");
+  const [remindDate, setRemindDate] = useState("");
+  const [remindTime, setRemindTime] = useState("");
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
@@ -28,19 +43,46 @@ export function NotesView({
     if (!content) return;
     setAdding(true);
     const supabase = createClient();
-    const { data, error } = await supabase
+    const remind_at = remindDate
+      ? new Date(`${remindDate}T${remindTime || "09:00"}`).toISOString()
+      : null;
+    const SEL = "id, content, created_at, remind_at";
+    let res = await supabase
       .from("notes")
-      .insert({ organization_id: orgId, content })
-      .select("id, content, created_at")
+      .insert({ organization_id: orgId, content, remind_at })
+      .select(SEL)
       .single();
+    // migration 020 yoksa remind_at kolonu yok → tarihsiz kaydet
+    if (res.error && /remind_at/i.test(res.error.message)) {
+      if (remind_at)
+        toast.info("Takip tarihi için güncelleme (020) gerekli; not tarihsiz kaydedildi.");
+      res = await supabase
+        .from("notes")
+        .insert({ organization_id: orgId, content })
+        .select("id, content, created_at")
+        .single();
+    }
     setAdding(false);
-    if (error) {
-      toast.error("Not eklenemedi", { description: error.message });
+    if (res.error) {
+      toast.error("Not eklenemedi", { description: res.error.message });
       return;
     }
-    setNotes((prev) => [data as Note, ...prev]);
+    setNotes((prev) => [res.data as Note, ...prev]);
     setDraft("");
+    setRemindDate("");
+    setRemindTime("");
     router.refresh();
+  }
+
+  // Takip tarihi rozeti rengi (geçmiş=kırmızı, bugün=amber, gelecek=nötr).
+  function remindBadge(iso: string) {
+    const day = iso.slice(0, 10);
+    const today = trDateKey(new Date());
+    if (day < today)
+      return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+    if (day === today)
+      return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
+    return "bg-primary/10 text-primary";
   }
 
   async function saveEdit(id: string) {
@@ -94,7 +136,27 @@ export function NotesView({
           placeholder="Örn. Ayşe Hanım bugün uğradı, salonu görmek istedi, fiyat sordu — Cuma tekrar gelecek."
           className="w-full resize-none rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
-        <div className="mt-2 flex justify-end">
+        <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">
+              Takip / hatırlatma tarihi (opsiyonel)
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={remindDate}
+                onChange={(e) => setRemindDate(e.target.value)}
+                className="rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              <input
+                type="time"
+                value={remindTime}
+                onChange={(e) => setRemindTime(e.target.value)}
+                disabled={!remindDate}
+                className="rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+              />
+            </div>
+          </div>
           <button
             onClick={add}
             disabled={adding || !draft.trim()}
@@ -148,9 +210,20 @@ export function NotesView({
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="whitespace-pre-wrap text-sm">{n.content}</p>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {formatTrDate(n.created_at)} · {formatTrTime(n.created_at)}
-                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <span>
+                        {formatTrDate(n.created_at)} · {formatTrTime(n.created_at)}
+                      </span>
+                      {n.remind_at && (
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium ${remindBadge(n.remind_at)}`}
+                        >
+                          <CalendarClock className="h-3 w-3" />
+                          Takip: {formatTrDate(n.remind_at)}{" "}
+                          {formatTrTime(n.remind_at)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
                     <button

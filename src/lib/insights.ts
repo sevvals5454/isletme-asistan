@@ -21,6 +21,7 @@ export type BusinessSummaryInput = {
   todayRevenue: number; // bugünkü tahmini ciro (planlı + tamamlanan)
   todayAppointments: number; // bugün planlı/tamamlanan randevu sayısı
   weekTrendPct: number | null; // bu hafta vs geçen hafta randevu %; null = yetersiz veri
+  dueNotes?: number; // takip zamanı gelen/geçen not sayısı
 };
 
 // Dashboard üstündeki "Bugün işletmen için önemli olanlar" satırlarını üretir.
@@ -40,6 +41,14 @@ export function buildBusinessSummary(i: BusinessSummaryInput): SummaryLine[] {
       tone: "warning",
       text: `${i.awaitingConfirm} randevu onay bekliyor.`,
       href: "/appointments",
+    });
+  }
+
+  if (i.dueNotes && i.dueNotes > 0) {
+    lines.push({
+      tone: "warning",
+      text: `${i.dueNotes} notun takip zamanı geldi.`,
+      href: "/notlar",
     });
   }
 

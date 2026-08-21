@@ -139,6 +139,13 @@ export default async function DashboardPage() {
     .gt("start_at", now.toISOString())
     .is("client_response", null);
 
+  // Takip zamanı gelen/geçen notlar (migration 019/020 yoksa 0).
+  const { count: dueNotes } = await supabase
+    .from("notes")
+    .select("*", { count: "exact", head: true })
+    .not("remind_at", "is", null)
+    .lt("remind_at", endOfToday.toISOString());
+
   // Başlangıç rehberi durumu — hangi adımlar tamamlandı?
   const onboardingStatus: OnboardingStatus = {
     services: (servicesCount ?? 0) > 0,
@@ -250,6 +257,7 @@ export default async function DashboardPage() {
     todayRevenue,
     todayAppointments: todayApptCount,
     weekTrendPct,
+    dueNotes: dueNotes ?? 0,
   });
 
   // Bu hafta boş günler: business_hours'ta açık ama randevusuz + bugünden itibaren.
