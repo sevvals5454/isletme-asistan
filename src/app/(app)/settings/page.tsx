@@ -144,11 +144,41 @@ export default async function SettingsPage() {
       <div>
         <h1 className="text-2xl font-semibold">Ayarlar</h1>
         <p className="text-sm text-muted-foreground">
-          İşletme bilgilerinizi ve kullanım istatistiklerinizi görüntüleyin
+          İşletmeni yönet — bir bölüme hızlıca gitmek için aşağıdakilere dokun
         </p>
       </div>
 
-      <section className="rounded-xl border bg-card p-6">
+      {/* Hızlı erişim: tıkla → o bölüme atla */}
+      <nav className="flex flex-wrap gap-2 rounded-xl border bg-card p-4 text-sm">
+        {(
+          [
+            ["isletme", "İşletme bilgileri"],
+            ["odeme", "Ödeme & IBAN"],
+            ["mesajlar", "Mesaj şablonları"],
+            ["online", "Online randevu"],
+            ["hizmetler", "Hizmetler"],
+            ["calisanlar", "Çalışanlar"],
+            ["saatler", "Çalışma saatleri"],
+            ["kapali", "Kapalı günler & izin"],
+            ["bildirim", "Bildirimler"],
+            ["uygulama", "Uygulama"],
+            ["hesap", "Hesap"],
+          ] as [string, string][]
+        ).map(([id, label]) => (
+          <a
+            key={id}
+            href={`#${id}`}
+            className="rounded-full border px-3 py-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            {label}
+          </a>
+        ))}
+      </nav>
+
+      <section
+        id="isletme"
+        className="scroll-mt-20 rounded-xl border bg-card p-6"
+      >
         <h2 className="mb-1 font-semibold">İşletme bilgileri</h2>
         <p className="mb-4 text-sm text-muted-foreground">
           Sidebar ve raporlarda görünecek isim
@@ -156,7 +186,7 @@ export default async function SettingsPage() {
         {org && <OrgNameForm orgId={org.id} initialName={org.name} />}
       </section>
 
-      <section className="rounded-xl border bg-card p-6">
+      <section id="odeme" className="scroll-mt-20 rounded-xl border bg-card p-6">
         <div className="mb-1 flex items-center gap-2">
           <Wallet className="h-4 w-4" />
           <h2 className="font-semibold">Ödeme & Değerlendirme</h2>
@@ -175,7 +205,7 @@ export default async function SettingsPage() {
         )}
       </section>
 
-      <section className="rounded-xl border bg-card p-6">
+      <section id="mesajlar" className="scroll-mt-20 rounded-xl border bg-card p-6">
         <div className="mb-1 flex items-center gap-2">
           <MessageSquare className="h-4 w-4" />
           <h2 className="font-semibold">Mesaj şablonları</h2>
@@ -192,7 +222,7 @@ export default async function SettingsPage() {
         )}
       </section>
 
-      <section className="rounded-xl border bg-card p-6">
+      <section id="online" className="scroll-mt-20 rounded-xl border bg-card p-6">
         <div className="mb-1 flex items-center gap-2">
           <Globe className="h-4 w-4" />
           <h2 className="font-semibold">Online randevu</h2>
@@ -211,7 +241,7 @@ export default async function SettingsPage() {
         )}
       </section>
 
-      <section className="rounded-xl border bg-card p-6">
+      <section id="hizmetler" className="scroll-mt-20 rounded-xl border bg-card p-6">
         <div className="mb-1 flex items-center gap-2">
           <Scissors className="h-4 w-4" />
           <h2 className="font-semibold">Hizmetler</h2>
@@ -224,7 +254,7 @@ export default async function SettingsPage() {
         )}
       </section>
 
-      <section className="rounded-xl border bg-card p-6">
+      <section id="calisanlar" className="scroll-mt-20 rounded-xl border bg-card p-6">
         <div className="mb-1 flex items-center gap-2">
           <Users className="h-4 w-4" />
           <h2 className="font-semibold">Çalışanlar</h2>
@@ -235,7 +265,7 @@ export default async function SettingsPage() {
         {org && <StaffManager orgId={org.id} initialStaff={staff ?? []} />}
       </section>
 
-      <section className="rounded-xl border bg-card p-6">
+      <section id="saatler" className="scroll-mt-20 rounded-xl border bg-card p-6">
         <div className="mb-1 flex items-center gap-2">
           <Clock className="h-4 w-4" />
           <h2 className="font-semibold">Çalışma saatleri</h2>
@@ -252,7 +282,7 @@ export default async function SettingsPage() {
         )}
       </section>
 
-      <section className="rounded-xl border bg-card p-6">
+      <section id="kapali" className="scroll-mt-20 rounded-xl border bg-card p-6">
         <div className="mb-1 flex items-center gap-2">
           <CalendarX className="h-4 w-4" />
           <h2 className="font-semibold">Kapalı günler & personel izni</h2>
@@ -270,7 +300,7 @@ export default async function SettingsPage() {
         )}
       </section>
 
-      <section className="rounded-xl border bg-card p-6">
+      <section id="bildirim" className="scroll-mt-20 rounded-xl border bg-card p-6">
         <div className="mb-1 flex items-center gap-2">
           <Bell className="h-4 w-4" />
           <h2 className="font-semibold">Bildirimler</h2>
@@ -282,7 +312,7 @@ export default async function SettingsPage() {
         <PushToggle />
       </section>
 
-      <section className="rounded-xl border bg-card p-6">
+      <section id="uygulama" className="scroll-mt-20 rounded-xl border bg-card p-6">
         <div className="mb-1 flex items-center gap-2">
           <RefreshCw className="h-4 w-4" />
           <h2 className="font-semibold">Uygulama güncellemesi</h2>
@@ -294,7 +324,7 @@ export default async function SettingsPage() {
         <UpdateButton />
       </section>
 
-      <section className="rounded-xl border bg-card p-6">
+      <section id="hesap" className="scroll-mt-20 rounded-xl border bg-card p-6">
         <h2 className="mb-1 font-semibold">Hesap</h2>
         <div className="space-y-1 text-sm">
           <div className="flex justify-between">
