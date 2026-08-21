@@ -68,6 +68,15 @@ body {
   font-feature-settings: "rlig" 1, "calt" 1;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* Yatay ekran kaymasını engelle (sticky üst barı bozmayan clip). */
+  overflow-x: clip;
+  max-width: 100%;
+}
+
+/* Uzun/boşluksuz metinler (linkler, e-postalar) taşmasın, sarsın. */
+p,
+a {
+  overflow-wrap: break-word;
 }
 
 /* Başlıklar biraz daha net */
