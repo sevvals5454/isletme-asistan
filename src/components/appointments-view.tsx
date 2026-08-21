@@ -618,6 +618,8 @@ function AppointmentModal({
   const [newMode, setNewMode] = useState(false);
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
+  // Dakika alanı serbest yazımı (null = timeVal'den türetilen değeri göster).
+  const [minRaw, setMinRaw] = useState<string | null>(null);
 
   // Seçili müşterinin kullanılabilir paketleri.
   const customerPackages = packages.filter((p) => p.customer_id === customerId);
@@ -970,11 +972,19 @@ function AppointmentModal({
                 <input
                   type="text"
                   inputMode="numeric"
-                  value={selMin}
+                  maxLength={2}
+                  value={minRaw ?? selMin}
                   onChange={(e) => {
                     let v = e.target.value.replace(/[^0-9]/g, "").slice(0, 2);
                     if (v !== "" && Number(v) > 59) v = "59";
-                    setTimeVal(`${selHour}:${(v || "0").padStart(2, "0")}`);
+                    setMinRaw(v);
+                    if (v !== "")
+                      setTimeVal(`${selHour}:${v.padStart(2, "0")}`);
+                  }}
+                  onFocus={(e) => e.currentTarget.select()}
+                  onBlur={() => {
+                    if (minRaw === "") setTimeVal(`${selHour}:00`);
+                    setMinRaw(null);
                   }}
                   className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   aria-label="Dakika"
