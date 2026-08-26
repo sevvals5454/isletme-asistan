@@ -26,7 +26,9 @@ export default async function AppLayout({
 
   const orgName =
     (membership?.organizations as { name?: string } | null)?.name ?? "İşletmem";
-  const role = (membership?.role as "owner" | "employee") ?? "owner";
+  // DB'de owner dışı rol ('member') = çalışan. Menü/sayfa erişimi buna göre.
+  const role: "owner" | "employee" =
+    membership?.role === "owner" ? "owner" : "employee";
 
   // Canlı randevu bildirimi için özel şablonlar (tolerant — kolon yoksa varsayılan).
   let messageTemplates: Record<string, string> | null = null;

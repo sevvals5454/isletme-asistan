@@ -47,7 +47,7 @@ begin
 
   if invited_org is not null then
     insert into public.organization_members (user_id, organization_id, role)
-      values (new.id, invited_org, 'employee');
+      values (new.id, invited_org, 'member'); -- owner dışı = çalışan
     inv_staff_id := nullif(new.raw_app_meta_data->>'staff_id','')::uuid;
     if inv_staff_id is not null then
       update public.staff set user_id = new.id

@@ -14,5 +14,8 @@ export async function getUserRole(): Promise<Role | null> {
     .select("role")
     .eq("user_id", user.id)
     .single();
-  return (data?.role as Role | undefined) ?? null;
+  if (!data) return null;
+  // DB'de sahip 'owner'; çalışan 'member' olarak tutulur. UI seviyesinde
+  // owner dışındaki her şeyi "employee" (çalışan) kabul et.
+  return data.role === "owner" ? "owner" : "employee";
 }
