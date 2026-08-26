@@ -9,7 +9,9 @@ import {
   TrendingDown,
   Scale,
 } from "lucide-react";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getUserRole } from "@/lib/roles";
 import { type AppointmentStatus, formatPrice } from "@/lib/appointments";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -37,6 +39,7 @@ export default async function ReportsPage({
 }: {
   searchParams: Promise<{ ym?: string }>;
 }) {
+  if ((await getUserRole()) !== "owner") redirect("/dashboard");
   const { ym } = await searchParams;
   const supabase = await createClient();
 

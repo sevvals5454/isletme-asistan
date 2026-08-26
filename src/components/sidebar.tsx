@@ -25,33 +25,39 @@ import { createClient } from "@/lib/supabase/client";
 
 const navItems = [
   { href: "/dashboard", label: "Panel", icon: LayoutDashboard },
-  { href: "/asistan", label: "Akıllı Asistan", icon: Sparkles },
+  { href: "/asistan", label: "Akıllı Asistan", icon: Sparkles, ownerOnly: true },
   { href: "/customers", label: "Müşteriler", icon: Users },
   { href: "/notlar", label: "Notlar", icon: StickyNote },
   { href: "/appointments", label: "Randevular", icon: Calendar },
   { href: "/calendar", label: "Takvim", icon: CalendarDays },
   { href: "/reminders", label: "Hatırlatmalar", icon: Bell },
-  { href: "/reports", label: "Raporlar", icon: BarChart3 },
-  { href: "/expenses", label: "Giderler", icon: TrendingDown },
+  { href: "/reports", label: "Raporlar", icon: BarChart3, ownerOnly: true },
+  { href: "/expenses", label: "Giderler", icon: TrendingDown, ownerOnly: true },
   { href: "/messages/bulk", label: "Toplu Mesaj", icon: Send },
-  { href: "/settings", label: "Ayarlar", icon: Settings },
+  { href: "/settings", label: "Ayarlar", icon: Settings, ownerOnly: true },
   { href: "/rehber", label: "Yardım", icon: HelpCircle },
 ];
 
 export function Sidebar({
   orgName,
   userEmail,
+  role = "owner",
 }: {
   orgName: string;
   userEmail: string;
+  role?: "owner" | "employee";
 }) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   // Not: mobil menü her nav link tıklamasında onClick ile zaten kapanıyor.
 
+  // Çalışan: gelir-gider/rapor/asistan/ayarlar menülerini görmez.
+  const items =
+    role === "owner" ? navItems : navItems.filter((i) => !i.ownerOnly);
+
   // Önek çakışmasında (örn. /messages vs /messages/bulk) en uzun eşleşen aktif.
-  const activeHref = navItems
+  const activeHref = items
     .filter((i) => pathname === i.href || pathname.startsWith(i.href + "/"))
     .sort((a, b) => b.href.length - a.href.length)[0]?.href;
 
@@ -85,7 +91,7 @@ export function Sidebar({
 
   const nav = (
     <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-      {navItems.map((item) => {
+      {items.map((item) => {
         const Icon = item.icon;
         const active = item.href === activeHref;
         return (

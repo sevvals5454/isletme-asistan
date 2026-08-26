@@ -12,7 +12,9 @@ import {
   FileText,
   Lightbulb,
 } from "lucide-react";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getUserRole } from "@/lib/roles";
 import {
   analyzeChurn,
   analyzeRevenue,
@@ -49,6 +51,7 @@ function NoData({ children }: { children: React.ReactNode }) {
 }
 
 export default async function AsistanPage() {
+  if ((await getUserRole()) !== "owner") redirect("/dashboard");
   const supabase = await createClient();
   const now = new Date();
 

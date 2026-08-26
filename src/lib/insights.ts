@@ -22,6 +22,7 @@ export type BusinessSummaryInput = {
   todayAppointments: number; // bugün planlı/tamamlanan randevu sayısı
   weekTrendPct: number | null; // bu hafta vs geçen hafta randevu %; null = yetersiz veri
   dueNotes?: number; // takip zamanı gelen/geçen not sayısı
+  hideRevenue?: boolean; // çalışan rolünde ciro satırını gizle
 };
 
 // Dashboard üstündeki "Bugün işletmen için önemli olanlar" satırlarını üretir.
@@ -70,14 +71,24 @@ export function buildBusinessSummary(i: BusinessSummaryInput): SummaryLine[] {
     });
   }
 
-  // Bugünkü tahmini ciro — her zaman gösterilir (gerçek veri).
-  lines.push({
-    tone: "success",
-    text: `Bugünkü tahmini ciro: ${formatPrice(i.todayRevenue)}${
-      i.todayAppointments ? ` · ${i.todayAppointments} randevu` : " · randevu yok"
-    }.`,
-    href: i.todayAppointments ? "/appointments" : undefined,
-  });
+  // Bugünkü tahmini ciro (çalışan rolünde gizli).
+  if (!i.hideRevenue) {
+    lines.push({
+      tone: "success",
+      text: `Bugünkü tahmini ciro: ${formatPrice(i.todayRevenue)}${
+        i.todayAppointments
+          ? ` · ${i.todayAppointments} randevu`
+          : " · randevu yok"
+      }.`,
+      href: i.todayAppointments ? "/appointments" : undefined,
+    });
+  } else if (i.todayAppointments) {
+    lines.push({
+      tone: "success",
+      text: `Bugün ${i.todayAppointments} randevun var.`,
+      href: "/appointments",
+    });
+  }
 
   return lines;
 }

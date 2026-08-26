@@ -20,12 +20,13 @@ export default async function AppLayout({
 
   const { data: membership } = await supabase
     .from("organization_members")
-    .select("organization_id, organizations(name)")
+    .select("organization_id, role, organizations(name)")
     .eq("user_id", user.id)
     .single();
 
   const orgName =
     (membership?.organizations as { name?: string } | null)?.name ?? "İşletmem";
+  const role = (membership?.role as "owner" | "employee") ?? "owner";
 
   // Canlı randevu bildirimi için özel şablonlar (tolerant — kolon yoksa varsayılan).
   let messageTemplates: Record<string, string> | null = null;
@@ -45,7 +46,7 @@ export default async function AppLayout({
       <WelcomeTour />
       <UpdateNotifier />
       <AppointmentSoonNotifier orgName={orgName} templates={messageTemplates} />
-      <Sidebar orgName={orgName} userEmail={user.email ?? ""} />
+      <Sidebar orgName={orgName} userEmail={user.email ?? ""} role={role} />
       <main className="md:pl-64">
         <PushPrompt />
         <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">

@@ -1,7 +1,10 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getUserRole } from "@/lib/roles";
 import { ExpensesView } from "@/components/expenses-view";
 
 export default async function ExpensesPage() {
+  if ((await getUserRole()) !== "owner") redirect("/dashboard");
   const supabase = await createClient();
 
   const { data: membership } = await supabase

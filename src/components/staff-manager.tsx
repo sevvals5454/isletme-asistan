@@ -2,7 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus, Pencil, Trash2, Check, X } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  Pencil,
+  Trash2,
+  Check,
+  X,
+  KeyRound,
+} from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 
@@ -12,6 +20,7 @@ export type Staff = {
   active: boolean;
   base_salary?: number | null;
   commission_rate?: number | null;
+  user_id?: string | null;
 };
 
 const FULL_SELECT = "id, name, active, base_salary, commission_rate";
@@ -27,6 +36,41 @@ export function StaffManager({
   const [staff, setStaff] = useState<Staff[]>(initialStaff);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [invitingId, setInvitingId] = useState<string | null>(null);
+  const [invEmail, setInvEmail] = useState("");
+  const [invPassword, setInvPassword] = useState("");
+  const [invLoading, setInvLoading] = useState(false);
+
+  async function invite(s: Staff) {
+    if (!invEmail.trim() || invPassword.length < 6) {
+      toast.error("E-posta ve en az 6 haneli şifre gerekli");
+      return;
+    }
+    setInvLoading(true);
+    const res = await fetch("/api/staff/invite", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        staff_id: s.id,
+        email: invEmail.trim(),
+        password: invPassword,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setInvLoading(false);
+    if (!res.ok || !data.ok) {
+      toast.error("Giriş oluşturulamadı", { description: data.error });
+      return;
+    }
+    toast.success("Çalışan girişi oluşturuldu 🔑");
+    setStaff((prev) =>
+      prev.map((x) => (x.id === s.id ? { ...x, user_id: "linked" } : x)),
+    );
+    setInvitingId(null);
+    setInvEmail("");
+    setInvPassword("");
+    router.refresh();
+  }
 
   async function toggleActive(s: Staff) {
     const supabase = createClient();
@@ -70,38 +114,104 @@ export function StaffManager({
                 onDone={(updated) => {
                   if (updated)
                     setStaff((prev) =>
-                      prev.map((x) => (x.id === updated.id ? updated : x)),
+                      prev.map((x) =>
+                        x.id === updated.id ? { ...x, ...updated } : x,
+                      ),
                     );
                   setEditingId(null);
                 }}
               />
             ) : (
-              <div key={s.id} className="flex items-center gap-3 p-3 text-sm">
-                <div className="flex-1 font-medium">{s.name}</div>
-                <button
-                  onClick={() => toggleActive(s)}
-                  className={
-                    s.active
-                      ? "rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                      : "rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
-                  }
-                >
-                  {s.active ? "Aktif" : "Pasif"}
-                </button>
-                <button
-                  onClick={() => setEditingId(s.id)}
-                  className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-                  aria-label="Düzenle"
-                >
-                  <Pencil className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => deleteStaff(s)}
-                  className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                  aria-label="Sil"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+              <div key={s.id}>
+                <div className="flex flex-wrap items-center gap-2 p-3 text-sm">
+                  <div className="flex-1 font-medium">{s.name}</div>
+                  {s.user_id ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                      <KeyRound className="h-3 w-3" />
+                      Girişi var
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setInvitingId(invitingId === s.id ? null : s.id);
+                        setInvEmail("");
+                        setInvPassword("");
+                      }}
+                      className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium hover:bg-muted"
+                    >
+                      <KeyRound className="h-3.5 w-3.5" />
+                      Giriş oluştur
+                    </button>
+                  )}
+                  <button
+                    onClick={() => toggleActive(s)}
+                    className={
+                      s.active
+                        ? "rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                        : "rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+                    }
+                  >
+                    {s.active ? "Aktif" : "Pasif"}
+                  </button>
+                  <button
+                    onClick={() => setEditingId(s.id)}
+                    className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    aria-label="Düzenle"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => deleteStaff(s)}
+                    className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    aria-label="Sil"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {invitingId === s.id && (
+                  <div className="space-y-2 border-t bg-muted/30 p-3">
+                    <p className="text-xs text-muted-foreground">
+                      Bu çalışana giriş oluştur. Çalışan yalnızca{" "}
+                      <strong>kendi müşteri ve randevularını</strong> görür;
+                      gelir-gider, rapor ve ayarları göremez.
+                    </p>
+                    <input
+                      type="email"
+                      value={invEmail}
+                      onChange={(e) => setInvEmail(e.target.value)}
+                      placeholder="calisan@eposta.com"
+                      className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                    <input
+                      type="text"
+                      value={invPassword}
+                      onChange={(e) => setInvPassword(e.target.value)}
+                      placeholder="Geçici şifre (en az 6 hane)"
+                      className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => setInvitingId(null)}
+                        className="rounded-lg border px-3 py-1.5 text-xs hover:bg-muted"
+                      >
+                        İptal
+                      </button>
+                      <button
+                        onClick={() => invite(s)}
+                        disabled={invLoading}
+                        className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                      >
+                        {invLoading ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <KeyRound className="h-3.5 w-3.5" />
+                        )}
+                        Oluştur
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ),
           )}

@@ -9,8 +9,10 @@ import {
   Globe,
   Bell,
 } from "lucide-react";
+import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { getUserRole } from "@/lib/roles";
 import { OnlineBookingSettings } from "@/components/online-booking-settings";
 import { PushToggle } from "@/components/push-toggle";
 import { OrgNameForm } from "@/components/org-name-form";
@@ -28,6 +30,7 @@ import { type DayHours } from "@/lib/hours";
 import { type MessageKind } from "@/lib/templates";
 
 export default async function SettingsPage() {
+  if ((await getUserRole()) !== "owner") redirect("/dashboard");
   const supabase = await createClient();
   const {
     data: { user },
@@ -103,11 +106,12 @@ export default async function SettingsPage() {
     active: boolean;
     base_salary?: number | null;
     commission_rate?: number | null;
+    user_id?: string | null;
   }[] = [];
   {
     const withPay = await supabase
       .from("staff")
-      .select("id, name, active, base_salary, commission_rate")
+      .select("id, name, active, base_salary, commission_rate, user_id")
       .order("created_at", { ascending: true });
     if (withPay.error) {
       const fb = await supabase

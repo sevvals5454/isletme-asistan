@@ -40,6 +40,7 @@ import {
   OnboardingGuide,
   type OnboardingStatus,
 } from "@/components/onboarding-guide";
+import { getUserRole } from "@/lib/roles";
 
 type TodayAppointment = {
   id: string;
@@ -57,6 +58,7 @@ type PkgRow = CustomerPackage & {
 
 export default async function DashboardPage() {
   const supabase = await createClient();
+  const isOwner = (await getUserRole()) === "owner";
 
   const now = new Date();
   // Tüm gün/hafta sınırları Türkiye saatine göre (sunucu UTC'de çalışsa bile).
@@ -258,6 +260,7 @@ export default async function DashboardPage() {
     todayAppointments: todayApptCount,
     weekTrendPct,
     dueNotes: dueNotes ?? 0,
+    hideRevenue: !isOwner,
   });
 
   // Bu hafta boş günler: business_hours'ta açık ama randevusuz + bugünden itibaren.
@@ -314,12 +317,14 @@ export default async function DashboardPage() {
           value={today.length}
           href="/appointments"
         />
-        <StatCard
-          icon={<Wallet className="h-5 w-5" />}
-          label="Bu hafta gelir tahmini"
-          value={formatPrice(weekRevenue)}
-          href="/appointments"
-        />
+        {isOwner && (
+          <StatCard
+            icon={<Wallet className="h-5 w-5" />}
+            label="Bu hafta gelir tahmini"
+            value={formatPrice(weekRevenue)}
+            href="/appointments"
+          />
+        )}
       </div>
 
       {/* Akıllı İşletme Özeti — bugün işletmende ne oluyor? */}
