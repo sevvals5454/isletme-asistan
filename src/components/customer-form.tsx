@@ -17,6 +17,7 @@ type Customer = {
   staff_id?: string | null;
   tags?: string[] | null;
   birth_date?: string | null;
+  since_date?: string | null;
 };
 
 export function CustomerForm({
@@ -36,6 +37,7 @@ export function CustomerForm({
   const [kvkk, setKvkk] = useState(customer?.kvkk_consent ?? false);
   const [staffId, setStaffId] = useState(customer?.staff_id ?? "");
   const [birthDate, setBirthDate] = useState(customer?.birth_date ?? "");
+  const [sinceDate, setSinceDate] = useState(customer?.since_date ?? "");
   const [tags, setTags] = useState<string[]>(customer?.tags ?? []);
   const [tagInput, setTagInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -70,25 +72,33 @@ export function CustomerForm({
     const consentGiven = kvkk && !(customer?.kvkk_consent ?? false);
 
     if (customer) {
-      const { error } = await supabase
+      const baseUpdate = {
+        name,
+        phone: phone || null,
+        email: email || null,
+        notes: notes || null,
+        staff_id: staffId || null,
+        birth_date: birthDate || null,
+        tags,
+        kvkk_consent: kvkk,
+        // Onay yeni verildiyse zaman damgası bas; kaldırıldıysa temizle
+        ...(consentGiven
+          ? { kvkk_consent_at: new Date().toISOString() }
+          : kvkk
+            ? {}
+            : { kvkk_consent_at: null }),
+      };
+      // since_date kolonu (migration 026) yoksa onsuz tekrar dene — kırılmasın.
+      let { error } = await supabase
         .from("customers")
-        .update({
-          name,
-          phone: phone || null,
-          email: email || null,
-          notes: notes || null,
-          staff_id: staffId || null,
-          birth_date: birthDate || null,
-          tags,
-          kvkk_consent: kvkk,
-          // Onay yeni verildiyse zaman damgası bas; kaldırıldıysa temizle
-          ...(consentGiven
-            ? { kvkk_consent_at: new Date().toISOString() }
-            : kvkk
-              ? {}
-              : { kvkk_consent_at: null }),
-        })
+        .update({ ...baseUpdate, since_date: sinceDate || null })
         .eq("id", customer.id);
+      if (error && /since_date|column|schema/i.test(error.message)) {
+        ({ error } = await supabase
+          .from("customers")
+          .update(baseUpdate)
+          .eq("id", customer.id));
+      }
 
       if (error) {
         toast.error("Güncelleme başarısız", { description: error.message });
@@ -117,22 +127,32 @@ export function CustomerForm({
         return;
       }
 
-      const { data: created, error } = await supabase
+      const baseInsert = {
+        organization_id: membership.organization_id,
+        name,
+        phone: phone || null,
+        email: email || null,
+        notes: notes || null,
+        staff_id: staffId || null,
+        birth_date: birthDate || null,
+        tags,
+        kvkk_consent: kvkk,
+        kvkk_consent_at: kvkk ? new Date().toISOString() : null,
+      };
+      // since_date kolonu (migration 026) yoksa onsuz tekrar dene — kırılmasın.
+      let res = await supabase
         .from("customers")
-        .insert({
-          organization_id: membership.organization_id,
-          name,
-          phone: phone || null,
-          email: email || null,
-          notes: notes || null,
-          staff_id: staffId || null,
-          birth_date: birthDate || null,
-          tags,
-          kvkk_consent: kvkk,
-          kvkk_consent_at: kvkk ? new Date().toISOString() : null,
-        })
+        .insert({ ...baseInsert, since_date: sinceDate || null })
         .select("id")
         .single();
+      if (res.error && /since_date|column|schema/i.test(res.error.message)) {
+        res = await supabase
+          .from("customers")
+          .insert(baseInsert)
+          .select("id")
+          .single();
+      }
+      const { data: created, error } = res;
 
       if (error) {
         toast.error("Kayıt başarısız", { description: error.message });
@@ -211,6 +231,22 @@ export function CustomerForm({
           />
           <p className="text-xs text-muted-foreground">
             Doğum günü kutlama hatırlatması için (opsiyonel)
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="since" className="text-sm font-medium">
+            Başlangıç tarihi
+          </label>
+          <input
+            id="since"
+            type="date"
+            value={sinceDate}
+            onChange={(e) => setSinceDate(e.target.value)}
+            className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+          <p className="text-xs text-muted-foreground">
+            Ne zamandan beri müşterin? Eski müşteriyi girerken faydalı (opsiyonel)
           </p>
         </div>
 

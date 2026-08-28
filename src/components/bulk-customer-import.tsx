@@ -84,6 +84,7 @@ export function BulkCustomerImport({
   const router = useRouter();
   const [text, setText] = useState("");
   const [staffId, setStaffId] = useState("");
+  const [sinceDate, setSinceDate] = useState("");
   const [loading, setLoading] = useState(false);
 
   const existingSet = useMemo(
@@ -122,12 +123,27 @@ export function BulkCustomerImport({
       kvkk_consent: false, // Toplu içe aktarımda pazarlama izni verilmez (KVKK güvenli).
       // Sahip bir çalışan seçtiyse müşteriler ona atanır (yoksa genel havuz/null).
       ...(isOwner && staffId ? { staff_id: staffId } : {}),
+      // Ortak başlangıç tarihi (migration 026 yoksa aşağıda onsuz denenir).
+      ...(sinceDate ? { since_date: sinceDate } : {}),
     }));
     // Büyük listeler için 500'lük parçalar hâlinde ekle.
     let added = 0;
+    let dropSince = false; // since_date kolonu yoksa onsuz devam et.
+    const stripSince = (arr: Record<string, unknown>[]) =>
+      arr.map((c) => {
+        const o = { ...c };
+        delete o.since_date;
+        return o;
+      });
     for (let i = 0; i < payload.length; i += 500) {
-      const chunk = payload.slice(i, i + 500);
-      const { error } = await supabase.from("customers").insert(chunk);
+      let chunk: Record<string, unknown>[] = payload.slice(i, i + 500);
+      if (dropSince) chunk = stripSince(chunk);
+      let { error } = await supabase.from("customers").insert(chunk);
+      if (error && /since_date|column|schema/i.test(error.message)) {
+        dropSince = true;
+        chunk = stripSince(chunk);
+        ({ error } = await supabase.from("customers").insert(chunk));
+      }
       if (error) {
         setLoading(false);
         toast.error("İçe aktarma sırasında hata", {
@@ -187,6 +203,24 @@ export function BulkCustomerImport({
           Telefon otomatik ayrılır; telefonu olmayan müşteriyi de ekleyebilirsin.
           Aynı telefon zaten kayıtlıysa tekrar eklenmez.
         </p>
+
+        <div className="mt-4 space-y-1 border-t pt-4">
+          <label className="text-sm font-medium">
+            Başlangıç tarihi{" "}
+            <span className="font-normal text-muted-foreground">
+              (hepsi için, isteğe bağlı)
+            </span>
+          </label>
+          <input
+            type="date"
+            value={sinceDate}
+            onChange={(e) => setSinceDate(e.target.value)}
+            className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-56"
+          />
+          <p className="text-xs text-muted-foreground">
+            Bu eski müşteriler ne zamandan beri geliyor? Boş bırakabilirsin.
+          </p>
+        </div>
 
         {isOwner && staff.length > 0 && (
           <div className="mt-4 space-y-1 border-t pt-4">
