@@ -7,10 +7,14 @@ export default async function ExpensesPage() {
   if ((await getUserRole()) !== "owner") redirect("/dashboard");
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const { data: membership } = await supabase
     .from("organization_members")
     .select("organization_id")
-    .single();
+    .eq("user_id", user?.id ?? "")
+    .maybeSingle();
 
   const { data: expenses } = await supabase
     .from("expenses")

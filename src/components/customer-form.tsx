@@ -100,10 +100,16 @@ export function CustomerForm({
       router.refresh();
       setLoading(false);
     } else {
+      // Kendi üyeliğini user_id ile çek (işletmede birden çok üye varsa
+      // filtresiz .single() 2 satır alıp kırılır → "Organizasyon bulunamadı").
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       const { data: membership } = await supabase
         .from("organization_members")
         .select("organization_id")
-        .single();
+        .eq("user_id", user?.id ?? "")
+        .maybeSingle();
 
       if (!membership) {
         toast.error("Organizasyon bulunamadı");

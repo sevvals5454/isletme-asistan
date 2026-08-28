@@ -6,10 +6,14 @@ import { BulkCustomerImport } from "@/components/bulk-customer-import";
 export default async function CustomerImportPage() {
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const { data: membership } = await supabase
     .from("organization_members")
     .select("organization_id")
-    .single();
+    .eq("user_id", user?.id ?? "")
+    .maybeSingle();
   if (!membership) redirect("/customers");
 
   const isOwner = (await getUserRole()) === "owner";
