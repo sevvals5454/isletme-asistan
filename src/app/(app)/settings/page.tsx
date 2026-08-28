@@ -71,17 +71,39 @@ export default async function SettingsPage() {
       } | null)?.message_templates ?? {};
   }
 
-  // Online randevu (migration 017 yoksa dayanıklı: kapalı varsayılır).
+  // Online randevu ayarları (migration 017/023 yoksa dayanıklı: varsayılanlar).
   let bookingEnabled = false;
+  let bookingRequiresApproval = false;
+  let bookingMinNotice = 0;
+  let bookingMaxAdvance = 60;
   if (org) {
-    const { data } = await supabase
+    // Önce 023 kolonlarıyla dene; yoksa sadece enabled'a düş.
+    const withV2 = await supabase
       .from("organizations")
-      .select("online_booking_enabled")
+      .select(
+        "online_booking_enabled, online_booking_requires_approval, online_min_notice_hours, online_max_advance_days",
+      )
       .eq("id", org.id)
       .single();
-    bookingEnabled =
-      (data as { online_booking_enabled?: boolean } | null)
-        ?.online_booking_enabled ?? false;
+    const raw = withV2.error
+      ? (
+          await supabase
+            .from("organizations")
+            .select("online_booking_enabled")
+            .eq("id", org.id)
+            .single()
+        ).data
+      : withV2.data;
+    const data = raw as unknown as {
+      online_booking_enabled?: boolean;
+      online_booking_requires_approval?: boolean;
+      online_min_notice_hours?: number;
+      online_max_advance_days?: number;
+    } | null;
+    bookingEnabled = data?.online_booking_enabled ?? false;
+    bookingRequiresApproval = data?.online_booking_requires_approval ?? false;
+    bookingMinNotice = data?.online_min_notice_hours ?? 0;
+    bookingMaxAdvance = data?.online_max_advance_days ?? 60;
   }
   const hdrs = await headers();
   const host = hdrs.get("host");
@@ -241,6 +263,9 @@ export default async function SettingsPage() {
             orgId={org.id}
             bookingUrl={bookingUrl}
             initialEnabled={bookingEnabled}
+            initialRequiresApproval={bookingRequiresApproval}
+            initialMinNoticeHours={bookingMinNotice}
+            initialMaxAdvanceDays={bookingMaxAdvance}
           />
         )}
       </section>

@@ -8,13 +8,21 @@ import { formatTurkishPhone } from "@/lib/phone";
 
 type Svc = { id: string; name: string; duration_min: number; price: number | null };
 type Stf = { id: string; name: string };
-type Info = { org_name: string; enabled: boolean; services: Svc[]; staff: Stf[] };
+type Info = {
+  org_name: string;
+  enabled: boolean;
+  min_notice_hours?: number;
+  max_advance_days?: number;
+  services: Svc[];
+  staff: Stf[];
+};
 type Day = {
   has_hours: boolean;
   is_open: boolean;
   open_time: string | null;
   close_time: string | null;
   closed: boolean;
+  capacity?: number;
   busy: { start_at: string; duration_min: number }[];
 };
 
@@ -23,9 +31,16 @@ function toMin(t: string): number {
   return (h || 0) * 60 + (m || 0);
 }
 
-function buildSlots(day: Day, serviceDur: number, dateStr: string): string[] {
+function buildSlots(
+  day: Day,
+  serviceDur: number,
+  dateStr: string,
+  minNoticeHours: number,
+): string[] {
   if (day.closed) return [];
   if (day.has_hours && !day.is_open) return [];
+  const capacity = day.capacity ?? 1;
+  if (capacity <= 0) return [];
   const open = toMin(day.has_hours && day.open_time ? day.open_time : "09:00");
   const close = toMin(
     day.has_hours && day.close_time ? day.close_time : "19:00",
@@ -34,15 +49,18 @@ function buildSlots(day: Day, serviceDur: number, dateStr: string): string[] {
     const s = new Date(b.start_at).getTime();
     return { s, e: s + b.duration_min * 60000 };
   });
-  const now = Date.now();
+  // En erken alınabilir an: şimdi + minimum ön bildirim süresi.
+  const earliest = Date.now() + Math.max(0, minNoticeHours) * 3600000;
   const out: string[] = [];
   for (let m = open; m + serviceDur <= close; m += 30) {
     const hh = String(Math.floor(m / 60)).padStart(2, "0");
     const mm = String(m % 60).padStart(2, "0");
     const start = new Date(`${dateStr}T${hh}:${mm}`).getTime();
     const end = start + serviceDur * 60000;
-    if (start < now) continue;
-    if (busy.some((b) => start < b.e && end > b.s)) continue;
+    if (start < earliest) continue;
+    // O ana denk gelen dolu randevu sayısı kapasiteyi doldurmuşsa saat kapalı.
+    const overlaps = busy.filter((b) => start < b.e && end > b.s).length;
+    if (overlaps >= capacity) continue;
     out.push(`${hh}:${mm}`);
   }
   return out;
@@ -64,12 +82,21 @@ export default function BookingPage() {
   const [phone, setPhone] = useState("");
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [token, setToken] = useState("");
   const [err, setErr] = useState("");
 
   const todayStr = useMemo(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   }, []);
+
+  const maxDateStr = useMemo(() => {
+    const days = info?.max_advance_days ?? 60;
+    const d = new Date();
+    d.setDate(d.getDate() + Math.max(1, days));
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }, [info]);
 
   const service = info?.services.find((s) => s.id === serviceId) ?? null;
 
@@ -82,53 +109,83 @@ export default function BookingPage() {
     })();
   }, [org]);
 
-  // Hizmet + tarih seçilince o günün müsaitliğini çek (setState yalnızca await sonrası).
+  // Hizmet + tarih (+ çalışan) seçilince o günün müsaitliğini çek.
   useEffect(() => {
     if (!serviceId || !dateVal) return;
     let active = true;
-    createClient()
-      .rpc("get_booking_day", { p_org: org, p_date: dateVal })
-      .then(({ data }) => {
-        if (!active) return;
-        setDay((data as Day) ?? null);
-        setDayDate(dateVal);
+    (async () => {
+      const sb = createClient();
+      // 3 argümanlı (personel bazlı) dene; migration 023 yoksa 2 argümanlıya düş.
+      let r = await sb.rpc("get_booking_day", {
+        p_org: org,
+        p_date: dateVal,
+        p_staff: staffId || null,
       });
+      if (r.error)
+        r = await sb.rpc("get_booking_day", { p_org: org, p_date: dateVal });
+      if (!active) return;
+      setDay((r.data as Day) ?? null);
+      setDayDate(dateVal);
+    })();
     return () => {
       active = false;
     };
-  }, [org, serviceId, dateVal]);
+  }, [org, serviceId, dateVal, staffId]);
 
   const dayReady = !!day && dayDate === dateVal;
   const dayLoading = !!serviceId && !!dateVal && !dayReady;
 
   const slots = useMemo(() => {
     if (!dayReady || !day || !service) return [];
-    return buildSlots(day, service.duration_min, dateVal);
-  }, [dayReady, day, service, dateVal]);
+    return buildSlots(
+      day,
+      service.duration_min,
+      dateVal,
+      info?.min_notice_hours ?? 0,
+    );
+  }, [dayReady, day, service, dateVal, info]);
 
   async function submit() {
     setErr("");
     if (!serviceId) return setErr("Hizmet seçin");
     if (!dateVal || !slot) return setErr("Gün ve saat seçin");
     if (!name.trim()) return setErr("Adınızı yazın");
+    if (phone.replace(/\D/g, "").length < 10)
+      return setErr("Geçerli bir telefon numarası girin");
     setSaving(true);
-    const sb = createClient();
     const startAt = new Date(`${dateVal}T${slot}`).toISOString();
-    const { data, error } = await sb.rpc("create_booking", {
-      p_org: org,
-      p_service: serviceId,
-      p_staff: staffId || null,
-      p_start: startAt,
-      p_name: name.trim(),
-      p_phone: phone.trim() || null,
-    });
+    let res: {
+      ok: boolean;
+      error?: string;
+      token?: string;
+      pending?: boolean;
+    } | null = null;
+    try {
+      const r = await fetch("/api/booking/create", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          org,
+          service: serviceId,
+          staff: staffId || null,
+          start: startAt,
+          name: name.trim(),
+          phone: phone.trim(),
+          serviceName: service?.name,
+        }),
+      });
+      res = await r.json().catch(() => null);
+    } catch {
+      res = null;
+    }
     setSaving(false);
-    const res = data as { ok: boolean; error?: string } | null;
-    if (error || !res?.ok) {
+    if (!res?.ok) {
       setErr(res?.error || "Randevu oluşturulamadı, lütfen tekrar deneyin.");
       if (res?.error?.includes("dolu")) setSlot(""); // saat kapılmış olabilir
       return;
     }
+    setToken(res.token || "");
+    setPending(!!res.pending);
     setDone(true);
   }
 
@@ -168,13 +225,25 @@ export default function BookingPage() {
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
             <CheckCircle className="h-6 w-6" />
           </div>
-          <h1 className="text-lg font-semibold">Randevunuz alındı 🎉</h1>
+          <h1 className="text-lg font-semibold">
+            {pending ? "Randevu talebiniz alındı 🎉" : "Randevunuz alındı 🎉"}
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {info.org_name} · {dateVal} {slot}
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
-            İşletme en kısa sürede sizinle iletişime geçecek. Teşekkürler!
+            {pending
+              ? "İşletme talebinizi onayladığında bilgilendirileceksiniz."
+              : "İşletme en kısa sürede sizinle iletişime geçecek. Teşekkürler!"}
           </p>
+          {token && (
+            <a
+              href={`/r/${token}`}
+              className="mt-4 inline-flex items-center justify-center rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted"
+            >
+              Randevumu görüntüle / iptal et
+            </a>
+          )}
         </div>
       </div>
     );
@@ -215,7 +284,10 @@ export default function BookingPage() {
             <label className="text-sm font-medium">Çalışan (isteğe bağlı)</label>
             <select
               value={staffId}
-              onChange={(e) => setStaffId(e.target.value)}
+              onChange={(e) => {
+                setStaffId(e.target.value);
+                setSlot("");
+              }}
               className={field}
             >
               <option value="">Farketmez</option>
@@ -233,6 +305,7 @@ export default function BookingPage() {
           <input
             type="date"
             min={todayStr}
+            max={maxDateStr}
             value={dateVal}
             onChange={(e) => {
               setDateVal(e.target.value);
@@ -293,6 +366,9 @@ export default function BookingPage() {
             inputMode="tel"
             className={field}
           />
+          <p className="text-xs text-muted-foreground">
+            Randevunuzu takip edebilmemiz için gereklidir.
+          </p>
         </div>
 
         {err && <p className="text-sm text-red-600">{err}</p>}

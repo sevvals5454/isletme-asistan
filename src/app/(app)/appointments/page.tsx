@@ -40,12 +40,25 @@ export default async function AppointmentsPage({
     { data: closedDays },
     { data: org },
   ] = await Promise.all([
-    supabase
-      .from("appointments")
-      .select(
-        "id, start_at, duration_min, status, price, notes, customer_id, service_id, package_id, staff_id, recurrence_group_id, confirm_token, client_response, customers(name, phone), services(name), staff(name)",
-      )
-      .order("start_at", { ascending: false }),
+    (async () => {
+      // Onay bayrağı + kaynak dahil dene; migration 023/017 yoksa kademeli düş.
+      const base =
+        "id, start_at, duration_min, status, price, notes, customer_id, service_id, package_id, staff_id, recurrence_group_id, confirm_token, client_response, customers(name, phone), services(name), staff(name)";
+      const v1 = base.replace(", customers(", ", source, customers(");
+      const v2 = v1.replace(", source,", ", source, pending_approval,");
+      const run = (sel: string) =>
+        supabase
+          .from("appointments")
+          .select(sel)
+          .order("start_at", { ascending: false }) as unknown as Promise<{
+          data: unknown;
+          error: unknown;
+        }>;
+      let r = await run(v2);
+      if (r.error) r = await run(v1);
+      if (r.error) r = await run(base);
+      return r;
+    })(),
     supabase
       .from("customers")
       .select("id, name")

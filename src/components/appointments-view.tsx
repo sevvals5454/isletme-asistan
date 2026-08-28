@@ -15,6 +15,9 @@ import {
   CalendarX,
   Star,
   CheckCircle2,
+  Globe,
+  Check,
+  Ban,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
@@ -55,6 +58,8 @@ type Appointment = {
   recurrence_group_id: string | null;
   confirm_token: string;
   client_response: string | null;
+  source?: string | null;
+  pending_approval?: boolean;
   customers: { name: string; phone: string | null } | null;
   services: { name: string } | null;
   staff: { name: string } | null;
@@ -67,8 +72,14 @@ function isoToLocalInput(iso: string): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
+// V1: her yerde güvenli (source 017'den beri var). Modal insert/update bunu kullanır.
 const APPT_SELECT =
-  "id, start_at, duration_min, status, price, notes, customer_id, service_id, package_id, staff_id, recurrence_group_id, confirm_token, client_response, customers(name, phone), services(name), staff(name)";
+  "id, start_at, duration_min, status, price, notes, customer_id, service_id, package_id, staff_id, recurrence_group_id, confirm_token, client_response, source, customers(name, phone), services(name), staff(name)";
+// V2: onay bayrağı dahil (migration 023). Yoksa V1'e düşülür.
+const APPT_SELECT_FULL = APPT_SELECT.replace(
+  ", source,",
+  ", source, pending_approval,",
+);
 
 type CustomerOption = { id: string; name: string };
 type StaffOption = { id: string; name: string };
@@ -136,11 +147,19 @@ export function AppointmentsView({
     const supabase = createClient();
     let active = true;
     async function sync() {
-      const { data } = await supabase
-        .from("appointments")
-        .select(APPT_SELECT)
-        .order("start_at", { ascending: false });
-      if (active && data) setAppointments(data as unknown as Appointment[]);
+      // Onay bayrağı dahil dene; migration 023 yoksa V1'e düş.
+      const run = (sel: string) =>
+        supabase
+          .from("appointments")
+          .select(sel)
+          .order("start_at", { ascending: false }) as unknown as Promise<{
+          data: unknown;
+          error: unknown;
+        }>;
+      let res = await run(APPT_SELECT_FULL);
+      if (res.error) res = await run(APPT_SELECT);
+      if (active && res.data)
+        setAppointments(res.data as unknown as Appointment[]);
     }
     const interval = setInterval(sync, 30000);
     const onFocus = () => sync();
@@ -192,6 +211,45 @@ export function AppointmentsView({
     setAppointments((prev) =>
       prev.map((a) => (a.id === appt.id ? { ...a, status } : a)),
     );
+    router.refresh();
+  }
+
+  async function approveBooking(appt: Appointment) {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("appointments")
+      .update({ pending_approval: false })
+      .eq("id", appt.id);
+    if (error) {
+      toast.error("Onaylanamadı", { description: error.message });
+      return;
+    }
+    setAppointments((prev) =>
+      prev.map((a) => (a.id === appt.id ? { ...a, pending_approval: false } : a)),
+    );
+    toast.success("Randevu onaylandı ✓");
+    router.refresh();
+  }
+
+  async function rejectBooking(appt: Appointment) {
+    if (!confirm("Bu randevu talebini reddetmek istiyor musun?")) return;
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("appointments")
+      .update({ status: "cancelled", pending_approval: false })
+      .eq("id", appt.id);
+    if (error) {
+      toast.error("Reddedilemedi", { description: error.message });
+      return;
+    }
+    setAppointments((prev) =>
+      prev.map((a) =>
+        a.id === appt.id
+          ? { ...a, status: "cancelled" as Status, pending_approval: false }
+          : a,
+      ),
+    );
+    toast.success("Randevu talebi reddedildi");
     router.refresh();
   }
 
@@ -321,7 +379,20 @@ export function AppointmentsView({
                     {formatWhen(a.start_at)}
                   </td>
                   <td className="px-4 py-3 font-medium">
-                    {a.customers?.name ?? "—"}
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      {a.customers?.name ?? "—"}
+                      {a.source === "online" && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-medium text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">
+                          <Globe className="h-3 w-3" />
+                          Online
+                        </span>
+                      )}
+                      {a.pending_approval && (
+                        <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                          Onay bekliyor
+                        </span>
+                      )}
+                    </span>
                     {a.staff?.name && (
                       <span className="block text-xs font-normal text-muted-foreground">
                         {a.staff.name}
@@ -370,6 +441,26 @@ export function AppointmentsView({
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
+                      {a.pending_approval && (
+                        <>
+                          <button
+                            onClick={() => approveBooking(a)}
+                            className="rounded-md p-1.5 text-green-600 hover:bg-green-100 dark:text-green-400 dark:hover:bg-green-900/30"
+                            aria-label="Randevuyu onayla"
+                            title="Randevuyu onayla"
+                          >
+                            <Check className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => rejectBooking(a)}
+                            className="rounded-md p-1.5 text-red-600 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900/30"
+                            aria-label="Randevuyu reddet"
+                            title="Randevu talebini reddet"
+                          >
+                            <Ban className="h-4 w-4" />
+                          </button>
+                        </>
+                      )}
                       <button
                         onClick={() => setEditingAppt(a)}
                         className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
