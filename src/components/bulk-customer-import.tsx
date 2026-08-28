@@ -17,14 +17,22 @@ function normalizePhone(raw: string): string {
 }
 
 type Status = "yeni" | "var" | "gecersiz";
-type Row = { name: string; phone: string | null; status: Status };
+type Row = {
+  name: string;
+  phone: string | null;
+  note: string | null;
+  status: Status;
+};
 
 function parseLines(text: string, existing: Set<string>): Row[] {
   const seen = new Set(existing);
   const seenNames = new Set<string>();
   const rows: Row[] = [];
   for (const rawLine of text.split(/\r?\n/)) {
-    const line = rawLine.trim();
+    // "|" sonrası not olarak alınır (grup/saat vb.). Ad ve telefon soldadır.
+    const barIdx = rawLine.indexOf("|");
+    const note = barIdx >= 0 ? rawLine.slice(barIdx + 1).trim() || null : null;
+    const line = (barIdx >= 0 ? rawLine.slice(0, barIdx) : rawLine).trim();
     if (!line) continue;
 
     // Satırdaki telefon adayını bul (en az ~10 haneli rakam dizisi).
@@ -65,7 +73,7 @@ function parseLines(text: string, existing: Set<string>): Row[] {
         seenNames.add(nk);
       }
     }
-    rows.push({ name: name || "(isim yok)", phone, status });
+    rows.push({ name: name || "(isim yok)", phone, note, status });
   }
   return rows;
 }
@@ -120,6 +128,7 @@ export function BulkCustomerImport({
       organization_id: orgId,
       name: r.name,
       phone: r.phone,
+      notes: r.note || null, // "|" sonrası not (grup/saat vb.)
       kvkk_consent: false, // Toplu içe aktarımda pazarlama izni verilmez (KVKK güvenli).
       // Sahip bir çalışan seçtiyse müşteriler ona atanır (yoksa genel havuz/null).
       ...(isOwner && staffId ? { staff_id: staffId } : {}),
@@ -201,7 +210,9 @@ export function BulkCustomerImport({
         />
         <p className="mt-2 text-xs text-muted-foreground">
           Telefon otomatik ayrılır; telefonu olmayan müşteriyi de ekleyebilirsin.
-          Aynı telefon zaten kayıtlıysa tekrar eklenmez.
+          Aynı telefon zaten kayıtlıysa tekrar eklenmez. Not eklemek için{" "}
+          <code className="rounded bg-muted px-1">|</code> kullan: örn.{" "}
+          <span className="font-mono">Ayşe 0532… | Salı-Perşembe 20:00</span>
         </p>
 
         <div className="mt-4 space-y-1 border-t pt-4">
@@ -281,7 +292,14 @@ export function BulkCustomerImport({
               <tbody className="divide-y">
                 {rows.slice(0, 300).map((r, i) => (
                   <tr key={i} className={r.status === "gecersiz" ? "opacity-60" : ""}>
-                    <td className="px-4 py-2 font-medium">{r.name}</td>
+                    <td className="px-4 py-2 font-medium">
+                      {r.name}
+                      {r.note && (
+                        <span className="block text-xs font-normal text-muted-foreground">
+                          {r.note}
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-2 text-muted-foreground">
                       {r.phone ?? "—"}
                     </td>
