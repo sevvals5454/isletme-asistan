@@ -44,6 +44,7 @@ export async function updateSession(request: NextRequest) {
     isLegalRoute ||
     pathname.startsWith("/r/") ||
     pathname.startsWith("/b/") ||
+    pathname.startsWith("/api/booking/") || // online randevu oluşturma (herkese açık)
     pathname.startsWith("/api/push/run"); // cron (secret ile korumalı)
 
   if (!user && !isPublicRoute) {
