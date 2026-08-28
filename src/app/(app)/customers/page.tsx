@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, Users } from "lucide-react";
+import { Plus, Users, Upload } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { CustomerList } from "@/components/customer-list";
 
@@ -19,13 +19,22 @@ export default async function CustomersPage() {
             {customers?.length ?? 0} müşteri kayıtlı
           </p>
         </div>
-        <Link
-          href="/customers/new"
-          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-        >
-          <Plus className="h-4 w-4" />
-          Yeni müşteri
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/customers/import"
+            className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted"
+          >
+            <Upload className="h-4 w-4" />
+            Toplu ekle
+          </Link>
+          <Link
+            href="/customers/new"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+          >
+            <Plus className="h-4 w-4" />
+            Yeni müşteri
+          </Link>
+        </div>
       </div>
 
       {!customers || customers.length === 0 ? (
