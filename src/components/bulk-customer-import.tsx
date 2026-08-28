@@ -73,12 +73,17 @@ function parseLines(text: string, existing: Set<string>): Row[] {
 export function BulkCustomerImport({
   orgId,
   existingPhones,
+  isOwner = false,
+  staff = [],
 }: {
   orgId: string;
   existingPhones: string[];
+  isOwner?: boolean;
+  staff?: { id: string; name: string }[];
 }) {
   const router = useRouter();
   const [text, setText] = useState("");
+  const [staffId, setStaffId] = useState("");
   const [loading, setLoading] = useState(false);
 
   const existingSet = useMemo(
@@ -115,6 +120,8 @@ export function BulkCustomerImport({
       name: r.name,
       phone: r.phone,
       kvkk_consent: false, // Toplu içe aktarımda pazarlama izni verilmez (KVKK güvenli).
+      // Sahip bir çalışan seçtiyse müşteriler ona atanır (yoksa genel havuz/null).
+      ...(isOwner && staffId ? { staff_id: staffId } : {}),
     }));
     // Büyük listeler için 500'lük parçalar hâlinde ekle.
     let added = 0;
@@ -180,6 +187,33 @@ export function BulkCustomerImport({
           Telefon otomatik ayrılır; telefonu olmayan müşteriyi de ekleyebilirsin.
           Aynı telefon zaten kayıtlıysa tekrar eklenmez.
         </p>
+
+        {isOwner && staff.length > 0 && (
+          <div className="mt-4 space-y-1 border-t pt-4">
+            <label className="text-sm font-medium">
+              Bu müşteriler hangi çalışana ait?{" "}
+              <span className="font-normal text-muted-foreground">
+                (isteğe bağlı)
+              </span>
+            </label>
+            <select
+              value={staffId}
+              onChange={(e) => setStaffId(e.target.value)}
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">Belirtme (genel — sadece sen görürsün)</option>
+              {staff.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Bir çalışan seçersen bu müşteriler ona atanır ve o çalışan kendi
+              hesabında bunları görür. Sen (sahip) her durumda hepsini görürsün.
+            </p>
+          </div>
+        )}
       </div>
 
       {rows.length > 0 && (

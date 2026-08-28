@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getUserRole } from "@/lib/roles";
 import { BulkCustomerImport } from "@/components/bulk-customer-import";
 
 export default async function CustomerImportPage() {
@@ -11,11 +12,20 @@ export default async function CustomerImportPage() {
     .single();
   if (!membership) redirect("/customers");
 
+  const isOwner = (await getUserRole()) === "owner";
+
   // Mükerrer kontrolü için mevcut telefonlar (RLS: yalnız kendi işletmen).
-  const { data: existing } = await supabase
-    .from("customers")
-    .select("phone")
-    .not("phone", "is", null);
+  // Sahip için tüm çalışanları listele (müşterileri bir çalışana atayabilsin).
+  const [{ data: existing }, { data: staff }] = await Promise.all([
+    supabase.from("customers").select("phone").not("phone", "is", null),
+    isOwner
+      ? supabase
+          .from("staff")
+          .select("id, name")
+          .eq("active", true)
+          .order("name", { ascending: true })
+      : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+  ]);
 
   const existingPhones = (existing ?? [])
     .map((c) => (c as { phone: string | null }).phone)
@@ -26,6 +36,8 @@ export default async function CustomerImportPage() {
       <BulkCustomerImport
         orgId={membership.organization_id}
         existingPhones={existingPhones}
+        isOwner={isOwner}
+        staff={(staff ?? []) as { id: string; name: string }[]}
       />
     </div>
   );
