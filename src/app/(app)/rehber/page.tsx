@@ -16,6 +16,11 @@ import {
   Settings,
   Smartphone,
   HelpCircle,
+  KeyRound,
+  StickyNote,
+  Globe,
+  Banknote,
+  Plane,
 } from "lucide-react";
 import { type ReactNode } from "react";
 import { TourReplayButton } from "@/components/tour-replay-button";
@@ -218,6 +223,29 @@ export default function RehberPage() {
       </Section>
 
       <Section
+        icon={<Globe className="h-4 w-4" />}
+        title="Online randevu (müşteri kendi alsın)"
+      >
+        <p>
+          Müşterilerinin sana yazmadan, kendi başına randevu alabileceği bir
+          sayfan var. <strong>Ayarlar → Online randevu</strong> bölümünden aç,
+          sana özel linki kopyala; Instagram biyografine, WhatsApp durumuna veya
+          Google’a koy.
+        </p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>
+            Müşteri hizmeti ve uygun saati seçer; çalışma saatlerin ve dolu
+            randevuların dışındaki boş saatler otomatik gösterilir.
+          </li>
+          <li>
+            Randevu <strong>Randevular</strong> listene düşer; sayfayı
+            yenilediğinde görünür ve “online” olarak gelir.
+          </li>
+          <li>Kayıtlı olmayan müşteri, formda ad-telefonla kendini oluşturur.</li>
+        </ul>
+      </Section>
+
+      <Section
         icon={<Package className="h-4 w-4" />}
         title="Paketler ve telafi"
       >
@@ -243,6 +271,28 @@ export default function RehberPage() {
       </Section>
 
       <Section
+        icon={<StickyNote className="h-4 w-4" />}
+        title="Notlar ve takip"
+      >
+        <p>
+          Randevu oluşturmadan aklında tutman gereken her şey için{" "}
+          <strong>Notlar</strong> menüsü:
+        </p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>
+            <strong>Randevusuz görüşmeler:</strong> “Fiyat sordu, düşünecek”,
+            “gelmek istiyor ama tarih vermedi” gibi kayıtlar.
+          </li>
+          <li>
+            <strong>Takip tarihi:</strong> Nota bir tarih (ve istersen saat)
+            ekle → o gün geldiğinde <strong>Akıllı Asistan</strong> sana
+            hatırlatır, telefonuna <strong>bildirim</strong> gönderir.
+          </li>
+          <li>İşi biten notu “tamamlandı” yaparak listeden düşürürsün.</li>
+        </ul>
+      </Section>
+
+      <Section
         icon={<MessageCircle className="h-4 w-4" />}
         title="Bugünkü aksiyonlar (takip asistanı)"
       >
@@ -264,6 +314,15 @@ export default function RehberPage() {
             <strong>Canlı bildirim:</strong> Uygulama açıkken, bir randevunun
             saati yaklaşınca ekrana “randevuya X dk kaldı” bildirimi düşer;
             oradan tek tıkla hatırlatma gönderebilirsin.
+          </span>
+        </p>
+        <p className="flex items-start gap-1.5">
+          <Smartphone className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            <strong>Kapalıyken de bildirim:</strong> İlk açılışta çıkan
+            “Bildirimlere izin ver” kutusunu onaylarsan, uygulama tamamen kapalı
+            olsa bile yaklaşan randevu ve takip notların için telefonuna
+            bildirim gelir.
           </span>
         </p>
       </Section>
@@ -307,6 +366,34 @@ export default function RehberPage() {
         </ul>
       </Section>
 
+      <Section
+        icon={<Banknote className="h-4 w-4" />}
+        title="Bordro (maaş & prim) ve izinler"
+      >
+        <p>
+          Birden fazla çalışanın varsa <strong>Ayarlar → Çalışanlar</strong>’da
+          her çalışana:
+        </p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>
+            <strong>Maaş:</strong> Sabit aylık ücret.
+          </li>
+          <li>
+            <strong>Prim (%):</strong> O çalışanın getirdiği tamamlanan
+            randevuların gelirinden alacağı yüzde. Bordro sayfası maaş + primi
+            otomatik hesaplar.
+          </li>
+          <li className="flex items-start gap-1.5">
+            <Plane className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              <strong>İzin/rahatsızlık günü:</strong> Bir çalışanın izinli
+              olduğu günü işaretlersin; o gün ona randevu girmeye çalışınca
+              uyarı çıkar (puantaj takibi).
+            </span>
+          </li>
+        </ul>
+      </Section>
+
       <Section icon={<Settings className="h-4 w-4" />} title="Ayarlar">
         <ul className="list-disc space-y-1 pl-5">
           <li>
@@ -329,6 +416,48 @@ export default function RehberPage() {
             için (boş bırakırsan kısıt olmaz).
           </li>
         </ul>
+      </Section>
+
+      <Section
+        icon={<KeyRound className="h-4 w-4" />}
+        title="Çalışan girişi ve yetkiler"
+      >
+        <p>
+          Çalışanların da kendi hesabıyla giriş yapıp yalnızca{" "}
+          <strong>kendi müşteri ve randevularını</strong> yönetebilir. İki rol
+          var:
+        </p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>
+            <strong>İşletme sahibi (sen):</strong> Her şeyi görürsün — tüm
+            müşteriler, gelir-gider, raporlar, asistan ve ayarlar.
+          </li>
+          <li>
+            <strong>Çalışan:</strong> Yalnızca kendine ait müşteri ve
+            randevuları görür. Gelir-gider, raporlar, akıllı asistan ve ayarlar{" "}
+            <strong>ona kapalıdır</strong> (menüde bile çıkmaz).
+          </li>
+        </ul>
+        <div className="space-y-2 pt-1">
+          <Step n={1}>
+            <strong>Ayarlar → Çalışanlar</strong> listesinde çalışanın yanındaki{" "}
+            <strong>“Giriş oluştur”</strong>a bas.
+          </Step>
+          <Step n={2}>
+            Çalışanın e-postasını ve bir <strong>geçici şifre</strong> gir
+            (en az 6 hane), oluştur.
+          </Step>
+          <Step n={3}>
+            Bu e-posta ve şifreyi çalışana ver; giriş sayfasından kendi
+            hesabıyla girer. Girişi olan çalışanda “Girişi var” rozeti görünür.
+          </Step>
+        </div>
+        <p className="rounded-lg bg-muted/50 p-3 text-xs">
+          <strong>Güvenli:</strong> Yetki sadece ekranda gizleme değil —
+          çalışan, kendisine ait olmayan müşteri veya finans verisine hiçbir
+          şekilde erişemez. Çalışanın eklediği yeni müşteri/randevu otomatik ona
+          bağlanır.
+        </p>
       </Section>
 
       <Section
