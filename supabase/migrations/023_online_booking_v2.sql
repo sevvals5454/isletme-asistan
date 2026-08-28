@@ -67,9 +67,12 @@ begin
         where organization_id = p_org and date = p_date and staff_id = p_staff) then
       v_closed := true;
     end if;
+    -- O personelin randevuları + personeli belirsiz (atanmamış) randevular da
+    -- dolu sayılır; aksi halde atanmamış randevuya rağmen çift rezervasyon olur.
     select coalesce(json_agg(json_build_object('start_at', start_at, 'duration_min', duration_min)), '[]'::json)
       into v_busy from public.appointments
-      where organization_id = p_org and status <> 'cancelled' and staff_id = p_staff
+      where organization_id = p_org and status <> 'cancelled'
+        and (staff_id = p_staff or staff_id is null)
         and start_at >= v_start and start_at < v_end;
   else
     if v_active_staff = 0 then
@@ -156,8 +159,10 @@ begin
         where organization_id = p_org and date = v_date and staff_id = p_staff) then
       return json_build_object('ok', false, 'error', 'Seçtiğiniz çalışan o gün müsait değil');
     end if;
+    -- O personelin randevuları + atanmamış (null) randevular dolu sayılır.
     select count(*) into v_overlap from public.appointments a
-      where a.organization_id = p_org and a.status <> 'cancelled' and a.staff_id = p_staff
+      where a.organization_id = p_org and a.status <> 'cancelled'
+        and (a.staff_id = p_staff or a.staff_id is null)
         and tstzrange(a.start_at, a.start_at + (a.duration_min || ' minutes')::interval)
             && tstzrange(p_start, p_start + (v_dur || ' minutes')::interval);
     if v_overlap >= 1 then
