@@ -1,7 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { BulkMessage } from "@/components/bulk-message";
 
-export default async function BulkMessagePage() {
+export default async function BulkMessagePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tag?: string }>;
+}) {
+  const { tag } = await searchParams;
   const supabase = await createClient();
 
   const [{ data: customers }, { data: org }] = await Promise.all([
@@ -16,6 +21,7 @@ export default async function BulkMessagePage() {
     <BulkMessage
       customers={(customers ?? []) as never}
       orgName={org?.name ?? ""}
+      initialSegment={tag}
     />
   );
 }

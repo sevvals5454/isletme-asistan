@@ -23,11 +23,13 @@ const DEFAULT_TEMPLATE =
 export function BulkMessage({
   customers,
   orgName,
+  initialSegment,
 }: {
   customers: Customer[];
   orgName: string;
+  initialSegment?: string;
 }) {
-  const [segment, setSegment] = useState<Segment>("kvkk");
+  const [segment, setSegment] = useState<Segment>(initialSegment || "kvkk");
   const [template, setTemplate] = useState(DEFAULT_TEMPLATE);
   const [sent, setSent] = useState<Set<string>>(new Set());
 
