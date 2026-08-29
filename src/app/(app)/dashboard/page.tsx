@@ -133,14 +133,6 @@ export default async function DashboardPage() {
     (orgTpl as { message_templates?: Record<string, string> | null } | null)
       ?.message_templates ?? null;
 
-  // Onay bekleyen gelecek randevular (akıllı özet için).
-  const { count: awaitingConfirm } = await supabase
-    .from("appointments")
-    .select("*", { count: "exact", head: true })
-    .eq("status", "scheduled")
-    .gt("start_at", now.toISOString())
-    .is("client_response", null);
-
   // Takip zamanı gelen/geçen notlar (migration 019/020 yoksa 0).
   const { count: dueNotes } = await supabase
     .from("notes")
@@ -253,7 +245,6 @@ export default async function DashboardPage() {
 
   const summary: SummaryLine[] = buildBusinessSummary({
     packagesEndingSoon,
-    awaitingConfirm: awaitingConfirm ?? 0,
     inactiveCount,
     inactiveDays: INACTIVE_DAYS,
     todayRevenue,

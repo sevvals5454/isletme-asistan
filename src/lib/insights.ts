@@ -15,7 +15,6 @@ export type SummaryLine = {
 
 export type BusinessSummaryInput = {
   packagesEndingSoon: number; // paketinde 1 seans kalan müşteri sayısı
-  awaitingConfirm: number; // onay bekleyen gelecek randevu sayısı
   inactiveCount: number; // eşik günü aşan, gelecek randevusu olmayan müşteri
   inactiveDays: number; // eşik (ör. 45 gün)
   todayRevenue: number; // bugünkü tahmini ciro (planlı + tamamlanan)
@@ -34,14 +33,6 @@ export function buildBusinessSummary(i: BusinessSummaryInput): SummaryLine[] {
     lines.push({
       tone: "danger",
       text: `${i.packagesEndingSoon} müşterinin paketinin bitmesine 1 seans kaldı.`,
-    });
-  }
-
-  if (i.awaitingConfirm > 0) {
-    lines.push({
-      tone: "warning",
-      text: `${i.awaitingConfirm} randevu onay bekliyor.`,
-      href: "/appointments",
     });
   }
 
