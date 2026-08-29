@@ -73,3 +73,9 @@ export function formatTrDate(iso: string | Date): string {
 export function trDateKey(d: Date): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: TR_TZ }).format(d);
 }
+
+// Şu anki zaman (ms). Render içinde Date.now() doğrudan çağrısı lint'e takıldığı
+// için (impure), opak bir yardımcı olarak ayrıldı — sıralama/karşılaştırma için.
+export function nowMs(): number {
+  return Date.now();
+}

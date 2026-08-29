@@ -11,6 +11,7 @@ import {
   STATUS_STYLES,
 } from "@/lib/appointments";
 import { trDateKey, formatTrTime } from "@/lib/time";
+import { slotChipClasses } from "@/lib/slot-color";
 
 type CalAppt = {
   id: string;
@@ -301,7 +302,7 @@ export function CalendarView() {
                     {dayAppts.map((a) => (
                       <div
                         key={a.id}
-                        className={`truncate rounded px-1 py-0.5 text-[10px] leading-tight ${STATUS_STYLES[a.status]}`}
+                        className={`truncate rounded px-1 py-0.5 text-[10px] leading-tight ${slotChipClasses(a.start_at)} ${a.status === "cancelled" ? "line-through opacity-50" : ""}`}
                       >
                         {formatTrTime(a.start_at)} {a.customers?.name ?? ""}
                       </div>
@@ -345,7 +346,7 @@ export function CalendarView() {
                     {dayAppts.slice(0, 2).map((a) => (
                       <div
                         key={a.id}
-                        className={`truncate rounded px-1 py-0.5 text-[10px] leading-tight ${STATUS_STYLES[a.status]}`}
+                        className={`truncate rounded px-1 py-0.5 text-[10px] leading-tight ${slotChipClasses(a.start_at)} ${a.status === "cancelled" ? "line-through opacity-50" : ""}`}
                       >
                         {formatTrTime(a.start_at)} {a.customers?.name ?? ""}
                       </div>

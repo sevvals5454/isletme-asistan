@@ -36,7 +36,8 @@ import {
   buildReminderMessage,
   formatTurkishPhone,
 } from "@/lib/phone";
-import { trStartOfDay, trStartOfWeek, addDays } from "@/lib/time";
+import { trStartOfDay, trStartOfWeek, addDays, nowMs } from "@/lib/time";
+import { slotDotClass } from "@/lib/slot-color";
 import { availabilityWarning, type DayHours } from "@/lib/hours";
 import {
   renderMessage,
@@ -195,7 +196,18 @@ export function AppointmentsView({
       });
     }
     if (staffFilter) base = base.filter((a) => a.staff_id === staffFilter);
-    return base;
+    // Ajanda sırası: yaklaşan randevular en yakından uzağa (üstte), geçmişler
+    // en yeniden eskiye (altta). Böylece "en yakın tarih en üstte" olur.
+    const now = nowMs();
+    return [...base].sort((a, b) => {
+      const ta = new Date(a.start_at).getTime();
+      const tb = new Date(b.start_at).getTime();
+      const fa = ta >= now;
+      const fb = tb >= now;
+      if (fa && fb) return ta - tb;
+      if (!fa && !fb) return tb - ta;
+      return fa ? -1 : 1;
+    });
   }, [appointments, tab, staffFilter]);
 
   async function changeStatus(appt: Appointment, status: Status) {
@@ -376,6 +388,10 @@ export function AppointmentsView({
               {filtered.map((a) => (
                 <tr key={a.id} className="hover:bg-muted/20">
                   <td className="px-4 py-3 whitespace-nowrap">
+                    <span
+                      className={`mr-2 inline-block h-2.5 w-2.5 rounded-full align-middle ${slotDotClass(a.start_at)}`}
+                      title="Aynı renk = aynı gün/saat grubu"
+                    />
                     {formatWhen(a.start_at)}
                   </td>
                   <td className="px-4 py-3 font-medium">
