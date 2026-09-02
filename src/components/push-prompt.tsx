@@ -18,8 +18,12 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 
 // Yeni kullanıcı girince ekranın üstünde çıkan tek tıkla "bildirimleri aç" şeridi.
 // (Tarayıcı kuralı: izin kullanıcı hareketiyle verilmek zorunda; otomatik açılamaz.)
+type Mode = "enable" | "ios-install" | null;
+
 export function PushPrompt() {
-  const [show, setShow] = useState(false);
+  // mode: "enable" = tek tıkla aç; "ios-install" = iPhone Safari'de önce ana
+  // ekrana ekle (iOS'ta push yalnız yüklü uygulamada çalışır).
+  const [mode, setMode] = useState<Mode>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -27,17 +31,26 @@ export function PushPrompt() {
     (async () => {
       await Promise.resolve();
       if (!active) return;
-      const supported =
-        "serviceWorker" in navigator && "PushManager" in window && !!VAPID;
-      const notGranted =
-        typeof Notification !== "undefined" &&
-        Notification.permission !== "granted";
-      // Kalıcı kapatma yok: "Sonra" 3 gün erteler, sonra tekrar hatırlatır.
       const snoozeUntil = Number(localStorage.getItem(DISMISS_KEY) || "0");
-      const snoozed = Date.now() < snoozeUntil;
-      // Tanıtım turu bitmeden şeridi gösterme (tur zaten bildirim adımı içeriyor).
-      const tourDone = localStorage.getItem("welcome-tour-v1") === "1";
-      setShow(supported && notGranted && !snoozed && tourDone);
+      if (Date.now() < snoozeUntil) return; // "Sonra" ile 3 gün ertelenmiş
+      const notGranted =
+        typeof Notification === "undefined" ||
+        Notification.permission !== "granted";
+      if (!notGranted) return; // zaten izin verilmiş
+
+      const pushSupported =
+        "serviceWorker" in navigator && "PushManager" in window && !!VAPID;
+      const ua = navigator.userAgent || "";
+      const isIOS = /iphone|ipad|ipod/i.test(ua);
+      const standalone =
+        window.matchMedia?.("(display-mode: standalone)").matches ||
+        (navigator as unknown as { standalone?: boolean }).standalone === true;
+
+      if (pushSupported) {
+        setMode("enable"); // tur şartı kaldırıldı — çalışan dahil herkese çıkar
+      } else if (isIOS && !standalone) {
+        setMode("ios-install"); // iPhone Safari sekmesi: önce ana ekrana ekle
+      }
     })();
     return () => {
       active = false;
@@ -50,7 +63,7 @@ export function PushPrompt() {
       const perm = await Notification.requestPermission();
       if (perm !== "granted") {
         toast.error("Bildirim izni verilmedi");
-        setShow(false);
+        setMode(null);
         return;
       }
       const reg = await navigator.serviceWorker.ready;
@@ -67,7 +80,7 @@ export function PushPrompt() {
       });
       if (!res.ok) throw new Error();
       toast.success("Bildirimler açıldı 🔔");
-      setShow(false);
+      setMode(null);
     } catch {
       toast.error("Bildirim açılamadı, Ayarlar → Bildirimler’den deneyebilirsin");
     } finally {
@@ -81,10 +94,39 @@ export function PushPrompt() {
       DISMISS_KEY,
       String(Date.now() + 3 * 24 * 60 * 60 * 1000),
     );
-    setShow(false);
+    setMode(null);
   }
 
-  if (!show) return null;
+  if (!mode) return null;
+
+  // iPhone Safari sekmesi: push yalnız yüklü uygulamada çalışır → yönlendirme.
+  if (mode === "ios-install") {
+    return (
+      <div className="border-b-2 border-primary/30 bg-gradient-to-r from-primary/15 to-primary/5">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-3 px-4 py-3 sm:px-6">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+            <Bell className="h-5 w-5" />
+          </div>
+          <div className="min-w-[200px] flex-1">
+            <p className="text-sm font-semibold">
+              Bildirim almak için uygulamayı ana ekrana ekle
+            </p>
+            <p className="text-xs text-muted-foreground">
+              iPhone&apos;da: alttaki <strong>Paylaş</strong> ikonuna bas →{" "}
+              <strong>Ana Ekrana Ekle</strong>. Sonra uygulamayı oradan açıp
+              bildirimlere izin ver.
+            </p>
+          </div>
+          <button
+            onClick={dismiss}
+            className="rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            Anladım
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="border-b-2 border-primary/30 bg-gradient-to-r from-primary/15 to-primary/5">
