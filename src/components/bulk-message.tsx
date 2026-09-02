@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { MessageCircle, Check, Users, Copy } from "lucide-react";
+import Link from "next/link";
+import { MessageCircle, Check, Users, Copy, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { toWhatsAppNumber, whatsAppReminderUrl } from "@/lib/phone";
 import { renderMessage } from "@/lib/templates";
@@ -58,12 +59,21 @@ export function BulkMessage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Toplu mesaj</h1>
-        <p className="text-sm text-muted-foreground">
-          Bir segment seç, mesajı yaz, müşterilere WhatsApp&apos;tan tek tek
-          gönder
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">Toplu mesaj</h1>
+          <p className="text-sm text-muted-foreground">
+            Bir segment seç, mesajı yaz, müşterilere WhatsApp&apos;tan tek tek
+            gönder
+          </p>
+        </div>
+        <Link
+          href="/messages/templates"
+          className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-muted"
+        >
+          <Pencil className="h-4 w-4" />
+          Mesaj şablonları
+        </Link>
       </div>
 
       <div className="rounded-xl border bg-card p-6 space-y-4">

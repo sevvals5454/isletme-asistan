@@ -15,10 +15,8 @@ import {
 const KINDS = Object.keys(DEFAULT_TEMPLATES) as MessageKind[];
 
 export function MessageTemplatesManager({
-  orgId,
   initial,
 }: {
-  orgId: string;
   initial: Partial<Record<MessageKind, string>>;
 }) {
   const router = useRouter();
@@ -38,12 +36,17 @@ export function MessageTemplatesManager({
       const val = values[k].trim();
       if (val && val !== DEFAULT_TEMPLATES[k]) custom[k] = val;
     }
-    const { error } = await supabase
-      .from("organizations")
-      .update({ message_templates: custom })
-      .eq("id", orgId);
+    // Güvenli RPC ile kaydet — hem sahip hem çalışan kendi işletmesinin
+    // şablonlarını günceller (organizations UPDATE sahibe kilitli olduğundan).
+    const { error } = await supabase.rpc("set_message_templates", {
+      p_templates: custom,
+    });
     if (error) {
-      toast.error("Kaydedilemedi", { description: error.message });
+      toast.error("Kaydedilemedi", {
+        description: error.message.includes("set_message_templates")
+          ? "Önce migration 027'yi çalıştırın."
+          : error.message,
+      });
       setLoading(false);
       return;
     }

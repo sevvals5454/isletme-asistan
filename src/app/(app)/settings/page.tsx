@@ -240,12 +240,7 @@ export default async function SettingsPage() {
           Müşterilere gönderilen WhatsApp mesajlarını kendi dilinize göre
           düzenleyin. İsim otomatik eklenir.
         </p>
-        {org && (
-          <MessageTemplatesManager
-            orgId={org.id}
-            initial={messageTemplates}
-          />
-        )}
+        {org && <MessageTemplatesManager initial={messageTemplates} />}
       </section>
 
       <section id="online" className="scroll-mt-20 rounded-xl border bg-card p-6">
