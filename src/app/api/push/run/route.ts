@@ -153,9 +153,90 @@ export async function GET(req: Request) {
     // notes push atlandı
   }
 
+  // ---- SABAH GÜNLÜK ÖZET ----
+  // Her işletmeye günde 1 kez (TR sabah penceresi), o günün randevu özeti.
+  // Uygulamayı hatırlatır/alışkanlık yapar. Yalnız bildirime izin verenlere gider.
+  let digestSent = 0;
+  try {
+    const todayStr = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Istanbul",
+    }).format(new Date()); // "YYYY-MM-DD" (TR günü)
+    const trHour = Number(
+      new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Europe/Istanbul",
+        hour: "2-digit",
+        hour12: false,
+      }).format(new Date()),
+    );
+
+    // Sadece sabah 08:00–11:59 arasında çalışan cron çağrılarında.
+    if (trHour >= 8 && trHour < 12) {
+      const dayStart = new Date(`${todayStr}T00:00:00+03:00`).toISOString();
+      const dayEnd = new Date(`${todayStr}T00:00:00+03:00`);
+      dayEnd.setDate(dayEnd.getDate() + 1);
+
+      const { data: subOrgs } = await admin
+        .from("push_subscriptions")
+        .select("organization_id");
+      const distinctOrgs = [
+        ...new Set((subOrgs ?? []).map((s) => s.organization_id as string)),
+      ];
+
+      for (const org of distinctOrgs) {
+        // Günde 1 kez: bugün gönderdiysek atla.
+        const { data: orgRow } = await admin
+          .from("organizations")
+          .select("last_digest_at")
+          .eq("id", org)
+          .single();
+        if ((orgRow as { last_digest_at?: string } | null)?.last_digest_at === todayStr)
+          continue;
+
+        const { count } = await admin
+          .from("appointments")
+          .select("*", { count: "exact", head: true })
+          .eq("organization_id", org)
+          .eq("status", "scheduled")
+          .gte("start_at", dayStart)
+          .lt("start_at", dayEnd.toISOString());
+
+        // Bugün için işaretle (boş gün olsa da tekrar sorgulamayalım).
+        await admin
+          .from("organizations")
+          .update({ last_digest_at: todayStr })
+          .eq("id", org);
+
+        if (!count || count === 0) continue; // boş günde sessiz kal (spam olmasın)
+
+        const subs = await subsFor(org);
+        const payload = JSON.stringify({
+          title: "Günaydın ☀️",
+          body: `Bugün ${count} randevun var. İyi çalışmalar!`,
+          url: "/dashboard",
+        });
+        for (const s of subs) {
+          try {
+            await webpush.sendNotification(
+              { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+              payload,
+            );
+            digestSent++;
+          } catch (e: unknown) {
+            const code = (e as { statusCode?: number })?.statusCode;
+            if (code === 404 || code === 410) {
+              await admin.from("push_subscriptions").delete().eq("id", s.id);
+            }
+          }
+        }
+      }
+    }
+  } catch {
+    // Sabah özeti atlandı (migration 028 yoksa last_digest_at kolonu yok).
+  }
+
   return Response.json({
     ok: true,
     checked: list.length,
-    sent: sent + notesSent,
+    sent: sent + notesSent + digestSent,
   });
 }

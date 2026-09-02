@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, X, Loader2 } from "lucide-react";
+import { Bell, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 const VAPID = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
@@ -32,10 +32,12 @@ export function PushPrompt() {
       const notGranted =
         typeof Notification !== "undefined" &&
         Notification.permission !== "granted";
-      const dismissed = localStorage.getItem(DISMISS_KEY) === "1";
+      // Kalıcı kapatma yok: "Sonra" 3 gün erteler, sonra tekrar hatırlatır.
+      const snoozeUntil = Number(localStorage.getItem(DISMISS_KEY) || "0");
+      const snoozed = Date.now() < snoozeUntil;
       // Tanıtım turu bitmeden şeridi gösterme (tur zaten bildirim adımı içeriyor).
       const tourDone = localStorage.getItem("welcome-tour-v1") === "1";
-      setShow(supported && notGranted && !dismissed && tourDone);
+      setShow(supported && notGranted && !snoozed && tourDone);
     })();
     return () => {
       active = false;
@@ -74,33 +76,44 @@ export function PushPrompt() {
   }
 
   function dismiss() {
-    localStorage.setItem(DISMISS_KEY, "1");
+    // Kalıcı değil — 3 gün sonra tekrar hatırlat (bildirim kullanımı artsın).
+    localStorage.setItem(
+      DISMISS_KEY,
+      String(Date.now() + 3 * 24 * 60 * 60 * 1000),
+    );
     setShow(false);
   }
 
   if (!show) return null;
 
   return (
-    <div className="border-b border-primary/20 bg-primary/10">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-2 px-4 py-2 sm:px-6">
-        <Bell className="h-4 w-4 shrink-0 text-primary" />
-        <span className="flex-1 text-sm">
-          Randevu hatırlatmalarını kaçırma — telefonuna bildirim gelsin.
-        </span>
+    <div className="border-b-2 border-primary/30 bg-gradient-to-r from-primary/15 to-primary/5">
+      <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-3 px-4 py-3 sm:px-6">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+          <Bell className="h-5 w-5" />
+        </div>
+        <div className="min-w-[200px] flex-1">
+          <p className="text-sm font-semibold">
+            Bildirimleri aç, hiçbir randevuyu kaçırma
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Randevu saatinden önce telefonuna hatırlatma gelir — uygulama kapalı
+            olsa bile. Her sabah günün özetini de alırsın.
+          </p>
+        </div>
         <button
           onClick={enable}
           disabled={busy}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
         >
-          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bell className="h-4 w-4" />}
           Bildirimleri aç
         </button>
         <button
           onClick={dismiss}
-          className="rounded-md p-1 text-muted-foreground hover:text-foreground"
-          aria-label="Kapat"
+          className="rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
         >
-          <X className="h-4 w-4" />
+          Sonra
         </button>
       </div>
     </div>
