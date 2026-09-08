@@ -11,6 +11,7 @@ import {
   Calendar,
   CalendarDays,
   Bell,
+  BellRing,
   BarChart3,
   TrendingDown,
   Send,
@@ -34,6 +35,7 @@ const navItems = [
   { href: "/reports", label: "Raporlar", icon: BarChart3, ownerOnly: true },
   { href: "/expenses", label: "Giderler", icon: TrendingDown, ownerOnly: true },
   { href: "/messages/bulk", label: "Toplu Mesaj", icon: Send },
+  { href: "/bildirimler", label: "Bildirimler", icon: BellRing },
   { href: "/settings", label: "Ayarlar", icon: Settings, ownerOnly: true },
   { href: "/rehber", label: "Yardım", icon: HelpCircle },
 ];
