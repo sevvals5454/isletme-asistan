@@ -8,12 +8,14 @@ import {
   RefreshCw,
   Globe,
   Bell,
+  Mail,
 } from "lucide-react";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getUserRole } from "@/lib/roles";
 import { OnlineBookingSettings } from "@/components/online-booking-settings";
+import { EmailReminderSettings } from "@/components/email-reminder-settings";
 import { PushToggle } from "@/components/push-toggle";
 import { OrgNameForm } from "@/components/org-name-form";
 import { OrgIbanForm } from "@/components/org-iban-form";
@@ -105,6 +107,21 @@ export default async function SettingsPage() {
     bookingMinNotice = data?.online_min_notice_hours ?? 0;
     bookingMaxAdvance = data?.online_max_advance_days ?? 60;
   }
+
+  // Otomatik e-posta hatırlatma (migration 029 yoksa kapalı varsayılır).
+  let emailRemindersEnabled = false;
+  if (org) {
+    const r = await supabase
+      .from("organizations")
+      .select("email_reminders_enabled")
+      .eq("id", org.id)
+      .maybeSingle();
+    if (!r.error)
+      emailRemindersEnabled =
+        (r.data as { email_reminders_enabled?: boolean } | null)
+          ?.email_reminders_enabled ?? false;
+  }
+
   const hdrs = await headers();
   const host = hdrs.get("host");
   const proto = hdrs.get("x-forwarded-proto") ?? "https";
@@ -261,6 +278,26 @@ export default async function SettingsPage() {
             initialRequiresApproval={bookingRequiresApproval}
             initialMinNoticeHours={bookingMinNotice}
             initialMaxAdvanceDays={bookingMaxAdvance}
+          />
+        )}
+      </section>
+
+      <section
+        id="hatirlatma"
+        className="scroll-mt-20 rounded-xl border bg-card p-6"
+      >
+        <div className="mb-1 flex items-center gap-2">
+          <Mail className="h-4 w-4" />
+          <h2 className="font-semibold">E-posta hatırlatma</h2>
+        </div>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Randevudan önce müşterilere otomatik hatırlatma e-postası gönderin —
+          &quot;unutan müşteri kalmasın&quot;.
+        </p>
+        {org && (
+          <EmailReminderSettings
+            orgId={org.id}
+            initialEnabled={emailRemindersEnabled}
           />
         )}
       </section>

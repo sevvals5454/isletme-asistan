@@ -4,8 +4,26 @@
 // Güvenli: secret olmadan çalışmaz. service_role ile RLS'i aşar.
 import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
+import { renderMessage, DEFAULT_TEMPLATES } from "@/lib/templates";
 
 export const dynamic = "force-dynamic";
+
+// Randevu zamanını TR tarih + saat parçalarına ayırır (e-posta şablonu için).
+function trParts(iso: string): { tarih: string; saat: string } {
+  const d = new Date(iso);
+  const tarih = new Intl.DateTimeFormat("tr-TR", {
+    timeZone: "Europe/Istanbul",
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+  }).format(d);
+  const saat = new Intl.DateTimeFormat("tr-TR", {
+    timeZone: "Europe/Istanbul",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d);
+  return { tarih, saat };
+}
 
 type Appt = {
   id: string;
@@ -234,9 +252,111 @@ export async function GET(req: Request) {
     // Sabah özeti atlandı (migration 028 yoksa last_digest_at kolonu yok).
   }
 
+  // ---- OTOMATİK E-POSTA HATIRLATMA ----
+  // Önümüzdeki 24 saatteki randevular için, işletme açtıysa + müşterinin e-postası
+  // varsa, Resend ile tek sefer hatırlatma maili gönderir. (migration 029)
+  let emailSent = 0;
+  try {
+    const RESEND = process.env.RESEND_API_KEY;
+    const FROM = process.env.EMAIL_FROM;
+    if (RESEND && FROM) {
+      const windowEnd = new Date(now + 24 * 60 * 60 * 1000).toISOString();
+      const { data: emApps } = await admin
+        .from("appointments")
+        .select(
+          "id, start_at, organization_id, customers(name, email), services(name)",
+        )
+        .eq("status", "scheduled")
+        .is("email_reminder_sent_at", null)
+        .gt("start_at", new Date(now).toISOString())
+        .lte("start_at", windowEnd);
+
+      const orgCache = new Map<
+        string,
+        { enabled: boolean; name: string; templates: Record<string, string> }
+      >();
+      async function orgInfo(org: string) {
+        const cached = orgCache.get(org);
+        if (cached) return cached;
+        const { data } = await admin
+          .from("organizations")
+          .select("name, email_reminders_enabled, message_templates")
+          .eq("id", org)
+          .single();
+        const d = data as {
+          name?: string;
+          email_reminders_enabled?: boolean;
+          message_templates?: Record<string, string> | null;
+        } | null;
+        const info = {
+          enabled: !!d?.email_reminders_enabled,
+          name: d?.name ?? "",
+          templates: (d?.message_templates ?? {}) as Record<string, string>,
+        };
+        orgCache.set(org, info);
+        return info;
+      }
+
+      type EmApp = {
+        id: string;
+        start_at: string;
+        organization_id: string;
+        customers: { name: string; email: string | null } | null;
+        services: { name: string } | null;
+      };
+      const markSent = (id: string) =>
+        admin
+          .from("appointments")
+          .update({ email_reminder_sent_at: new Date().toISOString() })
+          .eq("id", id);
+
+      for (const a of (emApps ?? []) as unknown as EmApp[]) {
+        const email = a.customers?.email;
+        const info = await orgInfo(a.organization_id);
+        // E-posta yoksa ya da işletme kapattıysa: işaretle, geç (tekrar sorma).
+        if (!email || !info.enabled) {
+          await markSent(a.id);
+          continue;
+        }
+        const { tarih, saat } = trParts(a.start_at);
+        const tpl =
+          info.templates.appointment_reminder ||
+          DEFAULT_TEMPLATES.appointment_reminder;
+        const body = renderMessage(tpl, {
+          ad: a.customers?.name ?? "",
+          tarih,
+          saat,
+          hizmet: a.services?.name ?? "",
+          isletme: info.name,
+        });
+        try {
+          await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${RESEND}`,
+              "content-type": "application/json",
+            },
+            body: JSON.stringify({
+              from: FROM,
+              to: email,
+              subject: `Randevu hatırlatması${info.name ? " — " + info.name : ""}`,
+              text: body,
+            }),
+          });
+          emailSent++;
+        } catch {
+          // mail gönderilemedi (yut); yine de işaretle (tek deneme, best-effort)
+        }
+        await markSent(a.id);
+      }
+    }
+  } catch {
+    // E-posta hatırlatma atlandı (migration 029 yoksa kolon yok).
+  }
+
   return Response.json({
     ok: true,
     checked: list.length,
-    sent: sent + notesSent + digestSent,
+    sent: sent + notesSent + digestSent + emailSent,
   });
 }
