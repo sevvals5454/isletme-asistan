@@ -15,6 +15,14 @@ A production, multi-tenant **SaaS for small businesses** that unifies **CRM, app
 
 ---
 
+## Screenshots
+
+| Landing | Smart Assistant | Notes |
+|---|---|---|
+| <img src="docs/screenshots/landing.png" width="240" /> | <img src="docs/screenshots/asistan.png" width="240" /> | <img src="docs/screenshots/notlar.png" width="240" /> |
+
+---
+
 ## Why it's interesting
 
 This is not a CRUD demo — it's a real product solving real operational problems for owner-operated businesses, with production concerns handled end-to-end:

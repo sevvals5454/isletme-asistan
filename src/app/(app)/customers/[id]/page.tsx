@@ -1,5 +1,12 @@
 import Link from "next/link";
-import { ChevronLeft, Calendar, Package, RotateCcw, Wallet } from "lucide-react";
+import {
+  ChevronLeft,
+  Calendar,
+  Package,
+  RotateCcw,
+  Wallet,
+  Scale,
+} from "lucide-react";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { CustomerForm } from "@/components/customer-form";
@@ -49,6 +56,7 @@ export default async function CustomerDetailPage({
     { data: makeupsData },
     { data: staffData },
     { data: paymentsData },
+    { data: chargeApptsData },
   ] = await Promise.all([
     supabase
       .from("appointments")
@@ -91,6 +99,13 @@ export default async function CustomerDetailPage({
       .select("id, customer_id, amount, method, note, paid_at")
       .eq("customer_id", id)
       .order("paid_at", { ascending: false }),
+    // Açık hesap için: paketsiz tamamlanmış hizmetlerin TÜM fiyatları (sayfa dışı).
+    supabase
+      .from("appointments")
+      .select("price")
+      .eq("customer_id", id)
+      .eq("status", "completed")
+      .is("package_id", null),
   ]);
 
   const appointments = (appointmentsData ?? []) as unknown as CustomerAppointment[];
@@ -112,6 +127,17 @@ export default async function CustomerDetailPage({
   const makeups = (makeupsData ?? []) as unknown as Makeup[];
   const staffList = (staffData ?? []) as { id: string; name: string }[];
   const payments = (paymentsData ?? []) as unknown as Payment[];
+
+  // Açık hesap (borç/alacak): toplam borç − toplam ödeme.
+  // Borç = satılan paketlerin fiyatı + paketsiz tamamlanmış hizmetlerin fiyatı.
+  const apptCharges = ((chargeApptsData ?? []) as { price: number | null }[]).reduce(
+    (s, a) => s + (Number(a.price) || 0),
+    0,
+  );
+  const pkgCharges = packages.reduce((s, p) => s + (Number(p.price) || 0), 0);
+  const totalCharges = apptCharges + pkgCharges;
+  const totalPaid = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+  const balance = totalCharges - totalPaid; // >0 borç, <0 fazla ödeme/alacaklı
 
   return (
     <div className="space-y-6">
@@ -207,6 +233,57 @@ export default async function CustomerDetailPage({
           initialMakeups={makeups}
           packages={packages}
         />
+      </div>
+
+      <div className="rounded-xl border bg-card p-6">
+        <div className="mb-4 flex items-center gap-2">
+          <Scale className="h-4 w-4" />
+          <h2 className="font-semibold">Hesap durumu</h2>
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="rounded-lg border p-3">
+            <div className="text-xs text-muted-foreground">Toplam borç</div>
+            <div className="mt-0.5 text-lg font-semibold tabular-nums">
+              {formatPrice(totalCharges)}
+            </div>
+          </div>
+          <div className="rounded-lg border p-3">
+            <div className="text-xs text-muted-foreground">Toplam ödeme</div>
+            <div className="mt-0.5 text-lg font-semibold tabular-nums">
+              {formatPrice(totalPaid)}
+            </div>
+          </div>
+          <div
+            className={`col-span-2 rounded-lg border p-3 sm:col-span-1 ${
+              balance > 0
+                ? "border-amber-300 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-900/20"
+                : balance < 0
+                  ? "border-emerald-300 bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-900/20"
+                  : ""
+            }`}
+          >
+            <div className="text-xs text-muted-foreground">Kalan</div>
+            <div
+              className={`mt-0.5 text-lg font-semibold tabular-nums ${
+                balance > 0
+                  ? "text-amber-700 dark:text-amber-400"
+                  : balance < 0
+                    ? "text-emerald-700 dark:text-emerald-400"
+                    : "text-muted-foreground"
+              }`}
+            >
+              {balance > 0
+                ? `${formatPrice(balance)} borç`
+                : balance < 0
+                  ? `${formatPrice(-balance)} fazla`
+                  : "Hesap kapalı ✓"}
+            </div>
+          </div>
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Borç = satılan paketler + tamamlanmış hizmetler; toplam ödeme düşülür.
+          Ödemeyi aşağıdan girersin.
+        </p>
       </div>
 
       <div className="rounded-xl border bg-card p-6">
