@@ -6,6 +6,7 @@ import {
   RotateCcw,
   Wallet,
   Scale,
+  Award,
 } from "lucide-react";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -57,6 +58,7 @@ export default async function CustomerDetailPage({
     { data: staffData },
     { data: paymentsData },
     { data: chargeApptsData },
+    { count: visitCount },
   ] = await Promise.all([
     supabase
       .from("appointments")
@@ -106,6 +108,12 @@ export default async function CustomerDetailPage({
       .eq("customer_id", id)
       .eq("status", "completed")
       .is("package_id", null),
+    // Sadakat için: toplam ziyaret (tamamlanan randevu) sayısı.
+    supabase
+      .from("appointments")
+      .select("*", { count: "exact", head: true })
+      .eq("customer_id", id)
+      .eq("status", "completed"),
   ]);
 
   const appointments = (appointmentsData ?? []) as unknown as CustomerAppointment[];
@@ -138,6 +146,20 @@ export default async function CustomerDetailPage({
   const totalCharges = apptCharges + pkgCharges;
   const totalPaid = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
   const balance = totalCharges - totalPaid; // >0 borç, <0 fazla ödeme/alacaklı
+
+  // Sadakat: ziyaret (tamamlanan randevu) + işletmenin ödül eşiği (0 = kapalı).
+  const visits = visitCount ?? 0;
+  const { data: orgLoyalty } = await supabase
+    .from("organizations")
+    .select("loyalty_threshold")
+    .eq("id", customer.organization_id)
+    .maybeSingle();
+  const loyaltyThreshold =
+    (orgLoyalty as { loyalty_threshold?: number } | null)?.loyalty_threshold ?? 0;
+  const rewardReady =
+    loyaltyThreshold > 0 && visits > 0 && visits % loyaltyThreshold === 0;
+  const toNextReward =
+    loyaltyThreshold > 0 ? loyaltyThreshold - (visits % loyaltyThreshold) : 0;
 
   return (
     <div className="space-y-6">
@@ -234,6 +256,48 @@ export default async function CustomerDetailPage({
           packages={packages}
         />
       </div>
+
+      {loyaltyThreshold > 0 && (
+        <div
+          className={`rounded-xl border bg-card p-6 ${
+            rewardReady ? "border-emerald-400 dark:border-emerald-700" : ""
+          }`}
+        >
+          <div className="mb-3 flex items-center gap-2">
+            <Award className="h-4 w-4" />
+            <h2 className="font-semibold">Sadakat</h2>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="text-sm">
+              <span className="text-2xl font-semibold tabular-nums">
+                {visits}
+              </span>{" "}
+              <span className="text-muted-foreground">ziyaret</span>
+            </div>
+            {rewardReady ? (
+              <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                🎁 Ödül hak etti!
+              </span>
+            ) : (
+              <span className="text-sm text-muted-foreground">
+                Sonraki ödüle <strong>{toNextReward}</strong> ziyaret
+              </span>
+            )}
+          </div>
+          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-primary transition-all"
+              style={{
+                width: `${((visits % loyaltyThreshold) / loyaltyThreshold) * 100}%`,
+              }}
+            />
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Her {loyaltyThreshold} ziyarette bir ödül. Eşiği Ayarlar &gt; Sadakat&apos;tan
+            değiştirebilirsin.
+          </p>
+        </div>
+      )}
 
       <div className="rounded-xl border bg-card p-6">
         <div className="mb-4 flex items-center gap-2">

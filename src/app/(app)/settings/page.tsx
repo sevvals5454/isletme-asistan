@@ -9,6 +9,7 @@ import {
   Globe,
   Bell,
   Mail,
+  Award,
 } from "lucide-react";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
@@ -16,6 +17,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getUserRole } from "@/lib/roles";
 import { OnlineBookingSettings } from "@/components/online-booking-settings";
 import { EmailReminderSettings } from "@/components/email-reminder-settings";
+import { LoyaltySettings } from "@/components/loyalty-settings";
 import { PushToggle } from "@/components/push-toggle";
 import { OrgNameForm } from "@/components/org-name-form";
 import { OrgIbanForm } from "@/components/org-iban-form";
@@ -120,6 +122,20 @@ export default async function SettingsPage() {
       emailRemindersEnabled =
         (r.data as { email_reminders_enabled?: boolean } | null)
           ?.email_reminders_enabled ?? false;
+  }
+
+  // Sadakat eşiği (migration 030 yoksa 0/kapalı).
+  let loyaltyThreshold = 0;
+  if (org) {
+    const r = await supabase
+      .from("organizations")
+      .select("loyalty_threshold")
+      .eq("id", org.id)
+      .maybeSingle();
+    if (!r.error)
+      loyaltyThreshold =
+        (r.data as { loyalty_threshold?: number } | null)?.loyalty_threshold ??
+        0;
   }
 
   const hdrs = await headers();
@@ -298,6 +314,26 @@ export default async function SettingsPage() {
           <EmailReminderSettings
             orgId={org.id}
             initialEnabled={emailRemindersEnabled}
+          />
+        )}
+      </section>
+
+      <section
+        id="sadakat"
+        className="scroll-mt-20 rounded-xl border bg-card p-6"
+      >
+        <div className="mb-1 flex items-center gap-2">
+          <Award className="h-4 w-4" />
+          <h2 className="font-semibold">Sadakat programı</h2>
+        </div>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Düzenli gelen müşterileri ödüllendir — belirli ziyarette &quot;ödül hak
+          etti&quot; uyarısı müşteri kartında görünür.
+        </p>
+        {org && (
+          <LoyaltySettings
+            orgId={org.id}
+            initialThreshold={loyaltyThreshold}
           />
         )}
       </section>

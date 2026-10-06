@@ -111,7 +111,6 @@ export function AppointmentsView({
   hours,
   closedDays,
   orgName,
-  reviewUrl,
   baseUrl,
   openNewAt,
   templates,
@@ -126,7 +125,6 @@ export function AppointmentsView({
   hours: DayHours[];
   closedDays: string[];
   orgName: string;
-  reviewUrl: string;
   baseUrl: string; // onay linki için (https://.../r/token)
   openNewAt?: string; // takvimden gelen tarih (YYYY-MM-DD) → modalı aç
   templates?: Partial<Record<MessageKind, string>> | null;
@@ -557,13 +555,14 @@ export function AppointmentsView({
                           ) : null;
                         })()}
                       {a.status === "completed" &&
-                        reviewUrl &&
+                        baseUrl &&
                         (() => {
+                          // In-app memnuniyet anketi (1-5 yıldız) linki.
                           const url = whatsAppReminderUrl(
                             a.customers?.phone,
                             renderMessage(t.review_request, {
                               ad: a.customers?.name ?? "",
-                              link: reviewUrl,
+                              link: `${baseUrl}/r/${a.confirm_token}`,
                               isletme: orgName,
                             }),
                           );

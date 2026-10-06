@@ -5,10 +5,35 @@ import { CustomerList } from "@/components/customer-list";
 
 export default async function CustomersPage() {
   const supabase = await createClient();
-  const { data: customers } = await supabase
-    .from("customers")
-    .select("id, name, phone, email, created_at, tags")
-    .order("created_at", { ascending: false });
+  const [{ data: customers }, { data: pkgs }, { data: appts }, { data: pays }] =
+    await Promise.all([
+      supabase
+        .from("customers")
+        .select("id, name, phone, email, created_at, tags")
+        .order("created_at", { ascending: false }),
+      // Açık hesap için: paket/hizmet/ödeme toplamları (RLS: kendi işletmen).
+      supabase.from("customer_packages").select("customer_id, price"),
+      supabase
+        .from("appointments")
+        .select("customer_id, price")
+        .eq("status", "completed")
+        .is("package_id", null),
+      supabase.from("payments").select("customer_id, amount"),
+    ]);
+
+  // Müşteri bazında bakiye: borç (paket + hizmet) − ödeme.
+  const charge = new Map<string, number>();
+  for (const p of (pkgs ?? []) as { customer_id: string; price: number | null }[])
+    charge.set(p.customer_id, (charge.get(p.customer_id) ?? 0) + (Number(p.price) || 0));
+  for (const a of (appts ?? []) as { customer_id: string; price: number | null }[])
+    charge.set(a.customer_id, (charge.get(a.customer_id) ?? 0) + (Number(a.price) || 0));
+  const paid = new Map<string, number>();
+  for (const p of (pays ?? []) as { customer_id: string; amount: number | null }[])
+    paid.set(p.customer_id, (paid.get(p.customer_id) ?? 0) + (Number(p.amount) || 0));
+  const customersWithBalance = (customers ?? []).map((c) => ({
+    ...c,
+    balance: (charge.get(c.id) ?? 0) - (paid.get(c.id) ?? 0),
+  }));
 
   return (
     <div className="space-y-6">
@@ -40,7 +65,7 @@ export default async function CustomersPage() {
       {!customers || customers.length === 0 ? (
         <EmptyState />
       ) : (
-        <CustomerList customers={customers} />
+        <CustomerList customers={customersWithBalance} />
       )}
     </div>
   );

@@ -108,11 +108,8 @@ export default async function AppointmentsPage({
   // Opsiyonel/yeni kolonlar (migration çalışmamış olabilir) — hata olursa varsayılana düş.
   const { data: orgExtra } = await supabase
     .from("organizations")
-    .select("google_review_url, message_templates")
+    .select("message_templates")
     .single();
-  const reviewUrl =
-    (orgExtra as { google_review_url?: string | null } | null)
-      ?.google_review_url ?? "";
   const templates =
     (orgExtra as { message_templates?: Record<string, string> | null } | null)
       ?.message_templates ?? null;
@@ -152,7 +149,6 @@ export default async function AppointmentsPage({
       closedDays={orgClosedDates}
       staffLeaves={staffLeaves}
       orgName={org?.name ?? ""}
-      reviewUrl={reviewUrl}
       baseUrl={baseUrl}
       openNewAt={openNewAt}
       templates={templates}

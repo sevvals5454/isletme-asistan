@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { CheckCircle, XCircle, Loader2, CalendarClock } from "lucide-react";
+import {
+  CheckCircle,
+  XCircle,
+  Loader2,
+  CalendarClock,
+  Star,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { formatAppointmentWhen } from "@/lib/appointments";
 
@@ -13,6 +19,8 @@ type Appt = {
   service_name: string | null;
   org_name: string;
   response: string | null;
+  status?: string | null;
+  customer_rating?: number | null;
 };
 
 export default function ConfirmPage() {
@@ -23,6 +31,12 @@ export default function ConfirmPage() {
   const [missing, setMissing] = useState(false);
   const [response, setResponse] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // Puanlama
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [feedback, setFeedback] = useState("");
+  const [ratedValue, setRatedValue] = useState<number | null>(null);
+  const [ratingSaving, setRatingSaving] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -32,8 +46,10 @@ export default function ConfirmPage() {
       });
       if (error || !data || data.length === 0) setMissing(true);
       else {
-        setAppt(data[0] as Appt);
-        setResponse((data[0] as Appt).response);
+        const a = data[0] as Appt;
+        setAppt(a);
+        setResponse(a.response);
+        setRatedValue(a.customer_rating ?? null);
       }
       setLoading(false);
     })();
@@ -49,6 +65,21 @@ export default function ConfirmPage() {
     if (!error) setResponse(r);
     setSaving(false);
   }
+
+  async function submitRating() {
+    if (rating < 1) return;
+    setRatingSaving(true);
+    const sb = createClient();
+    const { data } = await sb.rpc("rate_appointment", {
+      p_token: token,
+      p_rating: rating,
+      p_feedback: feedback.trim() || null,
+    });
+    setRatingSaving(false);
+    if ((data as { ok?: boolean } | null)?.ok) setRatedValue(rating);
+  }
+
+  const isCompleted = appt?.status === "completed";
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
@@ -83,7 +114,60 @@ export default function ConfirmPage() {
               </div>
             </div>
 
-            {response === "confirmed" ? (
+            {isCompleted ? (
+              ratedValue ? (
+                <div className="rounded-lg bg-green-100 p-3 text-sm font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                  <div className="mb-1 flex justify-center gap-0.5">
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <Star
+                        key={n}
+                        className={`h-5 w-5 ${n <= ratedValue ? "fill-current" : "text-green-300"}`}
+                      />
+                    ))}
+                  </div>
+                  Değerlendirmeniz için teşekkürler! 🙏
+                </div>
+              ) : (
+                <>
+                  <p className="mb-2 text-sm">Deneyiminizi puanlayın:</p>
+                  <div className="mb-3 flex justify-center gap-1">
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => setRating(n)}
+                        onMouseEnter={() => setHoverRating(n)}
+                        onMouseLeave={() => setHoverRating(0)}
+                        aria-label={`${n} yıldız`}
+                      >
+                        <Star
+                          className={`h-8 w-8 transition-colors ${
+                            n <= (hoverRating || rating)
+                              ? "fill-amber-400 text-amber-400"
+                              : "text-muted-foreground/40"
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  <textarea
+                    value={feedback}
+                    onChange={(e) => setFeedback(e.target.value)}
+                    rows={2}
+                    placeholder="Görüşünüz (isteğe bağlı)"
+                    className="mb-3 w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                  <button
+                    onClick={submitRating}
+                    disabled={ratingSaving || rating < 1}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                  >
+                    {ratingSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+                    Gönder
+                  </button>
+                </>
+              )
+            ) : response === "confirmed" ? (
               <div className="rounded-lg bg-green-100 p-3 text-sm font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
                 <CheckCircle className="mx-auto mb-1 h-5 w-5" />
                 Katılımınız onaylandı. Görüşmek üzere!
@@ -117,7 +201,7 @@ export default function ConfirmPage() {
               </>
             )}
 
-            {response && (
+            {response && !isCompleted && (
               <button
                 onClick={() =>
                   respond(response === "confirmed" ? "declined" : "confirmed")

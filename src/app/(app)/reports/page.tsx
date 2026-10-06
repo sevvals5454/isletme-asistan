@@ -48,6 +48,7 @@ export default async function ReportsPage({
     { data: packageData },
     { data: paymentData },
     { data: expenseData },
+    productSalesRes,
   ] = await Promise.all([
       supabase
         .from("appointments")
@@ -59,6 +60,8 @@ export default async function ReportsPage({
         .select("type, price, purchased_at, expires_at, services(name)"),
       supabase.from("payments").select("amount, paid_at"),
       supabase.from("expenses").select("amount, spent_at"),
+      // Ürün satışları (migration 032 yoksa hata yoksayılır).
+      supabase.from("product_sales").select("total, sold_at"),
     ]);
 
   const rows = (data ?? []) as unknown as Row[];
@@ -67,6 +70,10 @@ export default async function ReportsPage({
   const expenseRows = (expenseData ?? []) as {
     amount: number;
     spent_at: string;
+  }[];
+  const productSaleRows = (productSalesRes.error ? [] : productSalesRes.data ?? []) as {
+    total: number;
+    sold_at: string;
   }[];
 
   const now = new Date();
@@ -110,12 +117,21 @@ export default async function ReportsPage({
     .filter((p) => !p.expires_at || new Date(p.expires_at) >= monthStart)
     .reduce((s, p) => s + (p.price ?? 0), 0);
 
+  // Bu ay ürün satış geliri.
+  const monthProductSales = productSaleRows
+    .filter((p) => {
+      const d = new Date(p.sold_at);
+      return d >= monthStart && d < nextMonthStart;
+    })
+    .reduce((s, p) => s + (p.total ?? 0), 0);
+
   const monthRevenue =
     thisMonth
       .filter((r) => r.status === "completed")
       .reduce((s, r) => s + (r.price ?? 0), 0) +
     monthSessionSales +
-    monthlyMembershipFees;
+    monthlyMembershipFees +
+    monthProductSales;
   const monthCount = thisMonth.length;
 
   // Bu ay fiilen tahsil edilen (ödeme defteri). Gelir tahmininden ayrı metrik.
