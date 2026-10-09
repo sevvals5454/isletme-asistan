@@ -13,7 +13,7 @@ import {
   Crown,
 } from "lucide-react";
 import { SiteFooter } from "@/components/site-footer";
-import { PLANS, formatTl, TRIAL_DAYS } from "@/lib/plans";
+import { PLANS, formatTl, freeMonths, TRIAL_DAYS } from "@/lib/plans";
 
 export default function LandingPage() {
   return (
@@ -207,7 +207,9 @@ export default function LandingPage() {
               </div>
               <div className="text-xs text-muted-foreground">
                 veya yıllık {formatTl(plan.priceYearly)}{" "}
-                <span className="text-green-600">(2 ay bedava)</span>
+                <span className="text-green-600">
+                  ({freeMonths(plan)} ay bedava)
+                </span>
               </div>
               <ul className="mt-5 space-y-2">
                 {plan.perks.map((perk) => (

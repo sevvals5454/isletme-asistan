@@ -21,9 +21,8 @@ export const PLANS: Plan[] = [
     id: "pro",
     name: "Profesyonel",
     priceMonthly: 699,
-    priceYearly: 6990,
+    priceYearly: 7689, // 1 ay bedava (699 × 11)
     maxUsers: 3,
-    highlight: true,
     tagline: "Küçük ekipler için",
     perks: [
       "Patron + 2 çalışan (3 kullanıcı)",
@@ -37,8 +36,9 @@ export const PLANS: Plan[] = [
     id: "business",
     name: "İşletme",
     priceMonthly: 1299,
-    priceYearly: 12990,
+    priceYearly: 12990, // 2 ay bedava (1299 × 10)
     maxUsers: null,
+    highlight: true,
     tagline: "Büyüyen işletmeler için",
     perks: [
       "Sınırsız çalışan",
@@ -51,6 +51,11 @@ export const PLANS: Plan[] = [
 
 export function getPlan(id: string | null | undefined): Plan | undefined {
   return PLANS.find((p) => p.id === id);
+}
+
+/** Yıllık ödemede kaç ay bedava (fiyatlardan hesaplanır). */
+export function freeMonths(plan: Plan): number {
+  return Math.max(0, Math.round(12 - plan.priceYearly / plan.priceMonthly));
 }
 
 export function formatTl(n: number): string {

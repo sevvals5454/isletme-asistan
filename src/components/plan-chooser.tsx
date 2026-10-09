@@ -4,7 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Check, Loader2, Crown, Mail } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { PLANS, formatTl, type PlanId } from "@/lib/plans";
+import { PLANS, formatTl, freeMonths, type PlanId } from "@/lib/plans";
 
 export function PlanChooser({
   orgId,
@@ -85,7 +85,8 @@ export function PlanChooser({
               <span className="text-sm text-muted-foreground"> /ay</span>
             </div>
             <div className="text-xs text-muted-foreground">
-              veya yıllık {formatTl(plan.priceYearly)} (2 ay bedava)
+              veya yıllık {formatTl(plan.priceYearly)} ({freeMonths(plan)} ay
+              bedava)
             </div>
             <ul className="mt-3 space-y-1.5">
               {plan.perks.map((perk) => (
