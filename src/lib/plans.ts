@@ -20,8 +20,8 @@ export const PLANS: Plan[] = [
   {
     id: "pro",
     name: "Profesyonel",
-    priceMonthly: 499,
-    priceYearly: 4990,
+    priceMonthly: 699,
+    priceYearly: 6990,
     maxUsers: 3,
     highlight: true,
     tagline: "Küçük ekipler için",
@@ -36,8 +36,8 @@ export const PLANS: Plan[] = [
   {
     id: "business",
     name: "İşletme",
-    priceMonthly: 999,
-    priceYearly: 9990,
+    priceMonthly: 1299,
+    priceYearly: 12990,
     maxUsers: null,
     tagline: "Büyüyen işletmeler için",
     perks: [
