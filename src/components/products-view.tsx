@@ -504,7 +504,7 @@ function SellDialog({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-2xl border bg-card p-5 shadow-xl"
+        className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-2xl border bg-card p-5 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
