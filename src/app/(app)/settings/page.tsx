@@ -20,6 +20,7 @@ import { EmailReminderSettings } from "@/components/email-reminder-settings";
 import { LoyaltySettings } from "@/components/loyalty-settings";
 import { PushToggle } from "@/components/push-toggle";
 import { EngagementSettings } from "@/components/engagement-settings";
+import { PushTestButton } from "@/components/push-test-button";
 import { OrgNameForm } from "@/components/org-name-form";
 import { OrgIbanForm } from "@/components/org-iban-form";
 import { ServicesManager } from "@/components/services-manager";
@@ -426,7 +427,10 @@ export default async function SettingsPage() {
           Telefonuna “randevu yaklaştı” gibi bildirimler gelsin (uygulama kapalıyken
           bile). İzin verdiğin cihazlara gönderilir.
         </p>
-        <PushToggle />
+        <div className="flex flex-wrap items-center gap-3">
+          <PushToggle />
+          <PushTestButton />
+        </div>
         <div className="mt-5 border-t pt-4">
           <EngagementSettings
             orgId={org?.id ?? ""}

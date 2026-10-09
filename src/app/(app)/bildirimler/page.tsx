@@ -1,5 +1,6 @@
 import { BellRing } from "lucide-react";
 import { PushToggle } from "@/components/push-toggle";
+import { PushTestButton } from "@/components/push-test-button";
 
 export default function BildirimlerPage() {
   return (
@@ -26,7 +27,10 @@ export default function BildirimlerPage() {
           </div>
         </div>
 
-        <PushToggle />
+        <div className="flex flex-wrap items-center gap-3">
+          <PushToggle />
+          <PushTestButton />
+        </div>
 
         <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
           <strong>iPhone kullanıyorsan:</strong> Safari&apos;de alttaki{" "}
