@@ -10,8 +10,10 @@ import {
   Bell,
   Check,
   ShieldCheck,
+  Crown,
 } from "lucide-react";
 import { SiteFooter } from "@/components/site-footer";
+import { PLANS, formatTl, TRIAL_DAYS } from "@/lib/plans";
 
 export default function LandingPage() {
   return (
@@ -37,6 +39,12 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <Link
+              href="#fiyatlar"
+              className="hidden text-sm text-muted-foreground hover:text-foreground sm:inline"
+            >
+              Fiyatlar
+            </Link>
             <Link
               href="/login"
               className="text-sm text-muted-foreground hover:text-foreground"
@@ -158,6 +166,70 @@ export default function LandingPage() {
             title="Randevu ve takibi yönetin"
             desc="Randevuları planlayın, hatırlatmaları tek tıkla gönderin, gelirinizi görün."
           />
+        </div>
+      </section>
+
+      {/* Fiyatlandırma */}
+      <section id="fiyatlar" className="mx-auto max-w-4xl px-6 py-16">
+        <div className="mb-3 text-center">
+          <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/50 px-3 py-1 text-xs">
+            <Sparkles className="h-3 w-3" />
+            {TRIAL_DAYS} gün ücretsiz — kart bilgisi istemez
+          </span>
+        </div>
+        <h2 className="mb-2 text-center text-2xl font-semibold md:text-3xl">
+          Basit, şeffaf fiyatlandırma
+        </h2>
+        <p className="mx-auto mb-10 max-w-lg text-center text-sm text-muted-foreground">
+          Önce {TRIAL_DAYS} gün ücretsiz dene, sonra işletmene uygun paketi seç.
+          Tüm özellikler her pakette açık — fark sadece çalışan sayısında.
+        </p>
+        <div className="mx-auto grid max-w-2xl gap-5 sm:grid-cols-2">
+          {PLANS.map((plan) => (
+            <div
+              key={plan.id}
+              className={`relative rounded-2xl border bg-card p-6 ${
+                plan.highlight ? "border-primary shadow-lg ring-1 ring-primary" : ""
+              }`}
+            >
+              {plan.highlight && (
+                <span className="absolute -top-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 rounded-full bg-primary px-3 py-0.5 text-xs font-medium text-primary-foreground">
+                  <Crown className="h-3 w-3" /> En popüler
+                </span>
+              )}
+              <div className="text-lg font-semibold">{plan.name}</div>
+              <div className="text-sm text-muted-foreground">{plan.tagline}</div>
+              <div className="mt-4">
+                <span className="text-3xl font-bold">
+                  {formatTl(plan.priceMonthly)}
+                </span>
+                <span className="text-sm text-muted-foreground"> /ay</span>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                veya yıllık {formatTl(plan.priceYearly)}{" "}
+                <span className="text-green-600">(2 ay bedava)</span>
+              </div>
+              <ul className="mt-5 space-y-2">
+                {plan.perks.map((perk) => (
+                  <li key={perk} className="flex items-start gap-2 text-sm">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+                    <span>{perk}</span>
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/signup"
+                className={`mt-6 inline-flex w-full items-center justify-center gap-1 rounded-lg px-4 py-2.5 text-sm font-medium ${
+                  plan.highlight
+                    ? "bg-primary text-primary-foreground hover:opacity-90"
+                    : "border hover:bg-muted"
+                }`}
+              >
+                {TRIAL_DAYS} gün ücretsiz dene
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          ))}
         </div>
       </section>
 

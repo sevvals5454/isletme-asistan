@@ -18,6 +18,7 @@ import {
   Send,
   LogOut,
   Settings,
+  CreditCard,
   HelpCircle,
   Menu,
   X,
@@ -133,6 +134,13 @@ const navSections: { title?: string; items: NavItem[] }[] = [
   {
     title: "Ayarlar",
     items: [
+      {
+        href: "/abonelik",
+        label: "Abonelik",
+        icon: CreditCard,
+        color: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400",
+        ownerOnly: true,
+      },
       {
         href: "/settings",
         label: "Ayarlar",
