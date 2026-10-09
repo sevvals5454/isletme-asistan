@@ -15,7 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://isletme-asistan.vercel.app"),
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL || "https://techis.veritechsoft.com",
+  ),
   title: "TechİŞ — İşletme Asistanı",
   description: "Müşteri, randevu, paket ve gelir-gider yönetimi tek panelde",
   appleWebApp: { capable: true, title: "TechİŞ", statusBarStyle: "default" },
