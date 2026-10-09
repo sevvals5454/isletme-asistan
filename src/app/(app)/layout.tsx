@@ -95,9 +95,9 @@ export default async function AppLayout({
       <main className="md:pl-64">
         <PushPrompt />
         {role === "owner" && daysLeft !== null && (
-          <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-300">
+          <div className="border-b border-amber-300 bg-amber-100 px-4 py-2 text-center text-sm font-medium text-amber-900">
             Deneme sürümü — {daysLeft > 0 ? `${daysLeft} gün kaldı` : "bugün bitiyor"}.{" "}
-            <Link href="/abonelik" className="font-medium underline">
+            <Link href="/abonelik" className="underline underline-offset-2">
               Paketleri gör
             </Link>
           </div>
