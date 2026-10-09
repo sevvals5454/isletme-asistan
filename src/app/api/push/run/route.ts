@@ -250,7 +250,7 @@ export async function GET(req: Request) {
         const subs = await subsFor(org);
         const payload = JSON.stringify({
           title: "Günaydın ☀️",
-          body: `Bugün ${count} randevun var. İyi çalışmalar!`,
+          body: `Bugün ${count} randevun var. Hadi birlikte harika bir gün geçirelim!`,
           url: "/dashboard",
         });
         for (const s of subs) {
@@ -314,8 +314,8 @@ export async function GET(req: Request) {
 
         const subs = await subsFor(org);
         const payload = JSON.stringify({
-          title: "Seni özledik 👋",
-          body: "Bir süredir uğramadın. Bugünkü müşteri ve randevularına göz at!",
+          title: "Birlikte yönetelim 👋",
+          body: "Bir süredir uğramadın — işini birlikte toparlayalım. Bugünkü müşteri ve randevularına göz atalım!",
           url: "/dashboard",
         });
         for (const s of subs) {
