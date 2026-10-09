@@ -33,7 +33,10 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
-  const isAuthRoute = pathname.startsWith("/login") || pathname.startsWith("/signup");
+  const isAuthRoute =
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/signup") ||
+    pathname.startsWith("/forgot-password");
   // Girişsiz erişilebilen yasal/bilgi sayfaları
   const legalRoutes = ["/gizlilik", "/kullanim-kosullari", "/kvkk"];
   const isLegalRoute = legalRoutes.some((r) => pathname.startsWith(r));
@@ -42,6 +45,7 @@ export async function updateSession(request: NextRequest) {
     pathname === "/" ||
     isAuthRoute ||
     isLegalRoute ||
+    pathname.startsWith("/auth/callback") || // e-posta onay/şifre sıfırlama kod değişimi
     pathname.startsWith("/r/") ||
     pathname.startsWith("/b/") ||
     pathname.startsWith("/api/booking/") || // online randevu oluşturma (herkese açık)
