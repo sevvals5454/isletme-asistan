@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Loader2, Eye, EyeOff } from "lucide-react";
+import { Loader2, Eye, EyeOff, MailCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function SignupPage() {
@@ -14,6 +14,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false); // onay maili gönderildi ekranı
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -48,11 +49,37 @@ export default function SignupPage() {
       return;
     }
 
-    // Onay açıksa e-posta doğrulaması gerekir.
-    toast.success("Kayıt başarılı", {
-      description: "E-postanıza gelen onay linkine tıklayın.",
-    });
-    router.push("/login");
+    // Onay açıksa e-posta doğrulaması gerekir → "e-postanı kontrol et" ekranı.
+    setSent(true);
+    setLoading(false);
+  }
+
+  if (sent) {
+    return (
+      <div className="space-y-6 text-center">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <MailCheck className="h-7 w-7" />
+        </div>
+        <div className="space-y-2">
+          <h1 className="text-2xl font-semibold">E-postanı kontrol et</h1>
+          <p className="text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">{email}</span> adresine
+            bir doğrulama linki gönderdik. Giriş yapabilmek için gelen kutundaki
+            linke tıkla.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Mail birkaç dakika içinde gelmezse <strong>Spam / Gereksiz</strong>{" "}
+            klasörüne de bak.
+          </p>
+        </div>
+        <Link
+          href="/login"
+          className="inline-flex w-full items-center justify-center rounded-lg border py-2.5 text-sm font-medium hover:bg-muted"
+        >
+          Giriş sayfasına git
+        </Link>
+      </div>
+    );
   }
 
   return (
