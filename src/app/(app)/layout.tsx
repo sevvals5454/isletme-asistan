@@ -8,6 +8,7 @@ import { PushPrompt } from "@/components/push-prompt";
 import { WelcomeTour } from "@/components/welcome-tour";
 import { AccessLock } from "@/components/access-lock";
 import { isLocked, trialDaysLeft } from "@/lib/plans";
+import { nowMs } from "@/lib/time";
 
 export default async function AppLayout({
   children,
@@ -52,15 +53,26 @@ export default async function AppLayout({
   if (membership?.organization_id) {
     const { data: acc } = await supabase
       .from("organizations")
-      .select("access_status, trial_ends_at")
+      .select("access_status, trial_ends_at, last_active_at")
       .eq("id", membership.organization_id)
       .single();
     const a = acc as {
       access_status?: string | null;
       trial_ends_at?: string | null;
+      last_active_at?: string | null;
     } | null;
     accessStatus = a?.access_status ?? null;
     trialEndsAt = a?.trial_ends_at ?? null;
+
+    // "Son aktiflik"i güncelle (saatte en fazla 1 yazım — gereksiz yük olmasın).
+    const now = nowMs();
+    const last = a?.last_active_at ? new Date(a.last_active_at).getTime() : 0;
+    if (now - last > 60 * 60 * 1000) {
+      await supabase
+        .from("organizations")
+        .update({ last_active_at: new Date(now).toISOString() })
+        .eq("id", membership.organization_id);
+    }
   }
 
   // Deneme bitti + ödenmemiş → kilit ekranı (redirect DEĞİL; döngü olmasın).

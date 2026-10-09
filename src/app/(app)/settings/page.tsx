@@ -19,6 +19,7 @@ import { OnlineBookingSettings } from "@/components/online-booking-settings";
 import { EmailReminderSettings } from "@/components/email-reminder-settings";
 import { LoyaltySettings } from "@/components/loyalty-settings";
 import { PushToggle } from "@/components/push-toggle";
+import { EngagementSettings } from "@/components/engagement-settings";
 import { OrgNameForm } from "@/components/org-name-form";
 import { OrgIbanForm } from "@/components/org-iban-form";
 import { ServicesManager } from "@/components/services-manager";
@@ -122,6 +123,25 @@ export default async function SettingsPage() {
       emailRemindersEnabled =
         (r.data as { email_reminders_enabled?: boolean } | null)
           ?.email_reminders_enabled ?? false;
+  }
+
+  // Etkileşim bildirimleri (migration 034 yoksa varsayılan açık).
+  let notifyDigest = true;
+  let notifyInactive = true;
+  if (org) {
+    const r = await supabase
+      .from("organizations")
+      .select("notify_digest, notify_inactive")
+      .eq("id", org.id)
+      .maybeSingle();
+    if (!r.error) {
+      const d = r.data as {
+        notify_digest?: boolean;
+        notify_inactive?: boolean;
+      } | null;
+      notifyDigest = d?.notify_digest ?? true;
+      notifyInactive = d?.notify_inactive ?? true;
+    }
   }
 
   // Sadakat eşiği (migration 030 yoksa 0/kapalı).
@@ -407,6 +427,13 @@ export default async function SettingsPage() {
           bile). İzin verdiğin cihazlara gönderilir.
         </p>
         <PushToggle />
+        <div className="mt-5 border-t pt-4">
+          <EngagementSettings
+            orgId={org?.id ?? ""}
+            initialDigest={notifyDigest}
+            initialInactive={notifyInactive}
+          />
+        </div>
       </section>
 
       <section id="uygulama" className="scroll-mt-20 rounded-xl border bg-card p-6">

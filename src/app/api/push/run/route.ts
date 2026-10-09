@@ -171,6 +171,25 @@ export async function GET(req: Request) {
     // notes push atlandı
   }
 
+  // Etkileşim tercihleri + aktiflik (migration 034). Tolerant: kolon yoksa boş map.
+  type EngPref = {
+    notify_digest?: boolean;
+    notify_inactive?: boolean;
+    last_active_at?: string | null;
+    last_nudge_at?: string | null;
+  };
+  const engPrefs: Record<string, EngPref> = {};
+  try {
+    const { data } = await admin
+      .from("organizations")
+      .select("id, notify_digest, notify_inactive, last_active_at, last_nudge_at");
+    for (const r of (data ?? []) as (EngPref & { id: string })[]) {
+      engPrefs[r.id] = r;
+    }
+  } catch {
+    // migration 034 yoksa boş kalır → tüm bildirimler varsayılan açık.
+  }
+
   // ---- SABAH GÜNLÜK ÖZET ----
   // Her işletmeye günde 1 kez (TR sabah penceresi), o günün randevu özeti.
   // Uygulamayı hatırlatır/alışkanlık yapar. Yalnız bildirime izin verenlere gider.
@@ -201,6 +220,8 @@ export async function GET(req: Request) {
       ];
 
       for (const org of distinctOrgs) {
+        // Sabah özetini kapatan işletmeyi atla (migration 034).
+        if (engPrefs[org]?.notify_digest === false) continue;
         // Günde 1 kez: bugün gönderdiysek atla.
         const { data: orgRow } = await admin
           .from("organizations")
@@ -250,6 +271,71 @@ export async function GET(req: Request) {
     }
   } catch {
     // Sabah özeti atlandı (migration 028 yoksa last_digest_at kolonu yok).
+  }
+
+  // ---- HAREKETSİZLİK DÜRTMESİ ("geri dön") ----
+  // 3+ gündür uygulamaya uğramayan işletmeye, gündüz saatinde tek bir hatırlatma.
+  // 3 günde 1'den sık gönderilmez (spam olmasın). migration 034 (last_active_at).
+  let nudgeSent = 0;
+  try {
+    const trHour = Number(
+      new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Europe/Istanbul",
+        hour: "2-digit",
+        hour12: false,
+      }).format(new Date()),
+    );
+    // Sadece gündüz (TR 11:00–19:59) — gece rahatsız etmeyelim.
+    if (trHour >= 11 && trHour < 20) {
+      const now = Date.now();
+      const THREE_DAYS = 3 * 24 * 60 * 60 * 1000;
+      const { data: subOrgs } = await admin
+        .from("push_subscriptions")
+        .select("organization_id");
+      const distinctOrgs = [
+        ...new Set((subOrgs ?? []).map((s) => s.organization_id as string)),
+      ];
+      for (const org of distinctOrgs) {
+        const pref = engPrefs[org];
+        if (!pref || pref.notify_inactive === false) continue; // kapalı/bilinmeyen
+        const lastActive = pref.last_active_at
+          ? new Date(pref.last_active_at).getTime()
+          : 0;
+        if (!lastActive || now - lastActive < THREE_DAYS) continue; // hâlâ aktif
+        const lastNudge = pref.last_nudge_at
+          ? new Date(pref.last_nudge_at).getTime()
+          : 0;
+        if (lastNudge && now - lastNudge < THREE_DAYS) continue; // yakında dürttük
+
+        await admin
+          .from("organizations")
+          .update({ last_nudge_at: new Date().toISOString() })
+          .eq("id", org);
+
+        const subs = await subsFor(org);
+        const payload = JSON.stringify({
+          title: "Seni özledik 👋",
+          body: "Bir süredir uğramadın. Bugünkü müşteri ve randevularına göz at!",
+          url: "/dashboard",
+        });
+        for (const s of subs) {
+          try {
+            await webpush.sendNotification(
+              { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+              payload,
+            );
+            nudgeSent++;
+          } catch (e: unknown) {
+            const code = (e as { statusCode?: number })?.statusCode;
+            if (code === 404 || code === 410) {
+              await admin.from("push_subscriptions").delete().eq("id", s.id);
+            }
+          }
+        }
+      }
+    }
+  } catch {
+    // Dürtme atlandı (migration 034 yoksa kolonlar yok).
   }
 
   // ---- OTOMATİK E-POSTA HATIRLATMA ----
@@ -357,6 +443,6 @@ export async function GET(req: Request) {
   return Response.json({
     ok: true,
     checked: list.length,
-    sent: sent + notesSent + digestSent + emailSent,
+    sent: sent + notesSent + digestSent + nudgeSent + emailSent,
   });
 }
