@@ -81,11 +81,17 @@ export function AdminPanel({ initialOrgs }: { initialOrgs: AdminOrg[] }) {
 }
 
 function statusBadge(status: string | null) {
-  if (status === "active")
-    return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
-  if (status === "trial")
-    return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
-  return "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400";
+  if (status === "active") return "bg-green-600 text-white";
+  if (status === "trial") return "bg-amber-400 text-amber-950";
+  return "bg-rose-600 text-white";
+}
+
+function statusLabel(status: string | null): string {
+  if (status === "active") return "aktif";
+  if (status === "trial") return "deneme";
+  if (status === "blocked") return "kilitli";
+  if (status === "expired") return "süresi doldu";
+  return status ?? "—";
 }
 
 function OrgCard({
@@ -151,11 +157,11 @@ function OrgCard({
           <div className="flex items-center gap-2">
             <span className="truncate font-medium">{org.name}</span>
             <span
-              className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${statusBadge(
+              className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${statusBadge(
                 org.access_status,
               )}`}
             >
-              {org.access_status ?? "—"}
+              {statusLabel(org.access_status)}
             </span>
           </div>
           <div className="mt-0.5 text-xs text-muted-foreground">
