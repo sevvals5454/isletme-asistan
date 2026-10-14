@@ -19,6 +19,7 @@ import {
   LogOut,
   Settings,
   CreditCard,
+  ShieldCheck,
   HelpCircle,
   Menu,
   X,
@@ -32,6 +33,7 @@ type NavItem = {
   icon: typeof LayoutDashboard;
   color: string; // ikon kutusu rengi (statik Tailwind sınıfları)
   ownerOnly?: boolean;
+  adminOnly?: boolean; // yalnız süper-admin (kurucu) görür
 };
 
 // Menü, kullanıcı kafasında net otursun diye başlıklı gruplara ayrıldı.
@@ -135,6 +137,13 @@ const navSections: { title?: string; items: NavItem[] }[] = [
     title: "Ayarlar",
     items: [
       {
+        href: "/admin",
+        label: "Admin",
+        icon: ShieldCheck,
+        color: "bg-red-600 text-white",
+        adminOnly: true,
+      },
+      {
         href: "/abonelik",
         label: "Abonelik",
         icon: CreditCard,
@@ -162,10 +171,12 @@ export function Sidebar({
   orgName,
   userEmail,
   role = "owner",
+  isAdmin = false,
 }: {
   orgName: string;
   userEmail: string;
   role?: "owner" | "employee";
+  isAdmin?: boolean;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -177,8 +188,10 @@ export function Sidebar({
   const sections = navSections
     .map((s) => ({
       ...s,
-      items:
-        role === "owner" ? s.items : s.items.filter((i) => !i.ownerOnly),
+      items: s.items.filter(
+        (i) =>
+          (role === "owner" || !i.ownerOnly) && (isAdmin || !i.adminOnly),
+      ),
     }))
     .filter((s) => s.items.length > 0);
   const items = sections.flatMap((s) => s.items);

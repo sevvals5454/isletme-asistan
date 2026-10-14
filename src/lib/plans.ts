@@ -79,9 +79,17 @@ export type AccessStatus = "trial" | "active" | "expired" | "blocked";
 export function isLocked(
   status: string | null | undefined,
   trialEndsAt: string | null | undefined,
+  subscriptionEndsAt?: string | null | undefined,
 ): boolean {
   if (status === "expired" || status === "blocked") return true;
   if (status === "trial" && trialEndsAt && trialDaysLeft(trialEndsAt) <= 0)
     return true;
-  return false; // 'active', bilinmeyen, null → açık
+  // Manuel/ödeme aboneliği süresi dolmuşsa kilitle (bitiş tarihi girilmişse).
+  if (
+    status === "active" &&
+    subscriptionEndsAt &&
+    new Date(subscriptionEndsAt).getTime() < Date.now()
+  )
+    return true;
+  return false; // 'active' (süresiz veya süresi dolmamış), bilinmeyen, null → açık
 }

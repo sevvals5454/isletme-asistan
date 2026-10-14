@@ -8,6 +8,7 @@ import { PushPrompt } from "@/components/push-prompt";
 import { WelcomeTour } from "@/components/welcome-tour";
 import { AccessLock } from "@/components/access-lock";
 import { isLocked, trialDaysLeft } from "@/lib/plans";
+import { isAdminEmail } from "@/lib/admin";
 import { nowMs } from "@/lib/time";
 
 export default async function AppLayout({
@@ -50,19 +51,22 @@ export default async function AppLayout({
   // Erişim/deneme durumu (FAIL-OPEN: ayrı tolerant sorgu; kolon yoksa açık kalır).
   let accessStatus: string | null = null;
   let trialEndsAt: string | null = null;
+  let subscriptionEndsAt: string | null = null;
   if (membership?.organization_id) {
     const { data: acc } = await supabase
       .from("organizations")
-      .select("access_status, trial_ends_at, last_active_at")
+      .select("access_status, trial_ends_at, subscription_ends_at, last_active_at")
       .eq("id", membership.organization_id)
       .single();
     const a = acc as {
       access_status?: string | null;
       trial_ends_at?: string | null;
+      subscription_ends_at?: string | null;
       last_active_at?: string | null;
     } | null;
     accessStatus = a?.access_status ?? null;
     trialEndsAt = a?.trial_ends_at ?? null;
+    subscriptionEndsAt = a?.subscription_ends_at ?? null;
 
     // "Son aktiflik"i güncelle (saatte en fazla 1 yazım — gereksiz yük olmasın).
     const now = nowMs();
@@ -76,7 +80,7 @@ export default async function AppLayout({
   }
 
   // Deneme bitti + ödenmemiş → kilit ekranı (redirect DEĞİL; döngü olmasın).
-  if (isLocked(accessStatus, trialEndsAt)) {
+  if (isLocked(accessStatus, trialEndsAt, subscriptionEndsAt)) {
     return (
       <AccessLock role={role} orgId={membership?.organization_id ?? ""} />
     );
@@ -91,7 +95,12 @@ export default async function AppLayout({
       <WelcomeTour />
       <UpdateNotifier />
       <AppointmentSoonNotifier orgName={orgName} templates={messageTemplates} />
-      <Sidebar orgName={orgName} userEmail={user.email ?? ""} role={role} />
+      <Sidebar
+        orgName={orgName}
+        userEmail={user.email ?? ""}
+        role={role}
+        isAdmin={isAdminEmail(user.email)}
+      />
       <main className="md:pl-64">
         <PushPrompt />
         {role === "owner" && daysLeft !== null && (
