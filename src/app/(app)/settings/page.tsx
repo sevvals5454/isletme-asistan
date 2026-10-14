@@ -21,6 +21,7 @@ import { LoyaltySettings } from "@/components/loyalty-settings";
 import { PushToggle } from "@/components/push-toggle";
 import { EngagementSettings } from "@/components/engagement-settings";
 import { PushTestButton } from "@/components/push-test-button";
+import { ChangePassword } from "@/components/change-password";
 import { OrgNameForm } from "@/components/org-name-form";
 import { OrgIbanForm } from "@/components/org-iban-form";
 import { ServicesManager } from "@/components/services-manager";
@@ -464,6 +465,7 @@ export default async function SettingsPage() {
             <span className="capitalize">{membership?.role ?? "—"}</span>
           </div>
         </div>
+        <ChangePassword />
       </section>
     </div>
   );
