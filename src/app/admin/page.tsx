@@ -3,8 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { isAdminEmail } from "@/lib/admin";
 import { AdminPanel, type AdminOrg } from "@/components/admin-panel";
 import { AdminLogin } from "@/components/admin-login";
-import { ChangePassword } from "@/components/change-password";
-import { LogoutButton } from "@/components/logout-button";
+import { AdminAccountMenu } from "@/components/admin-account-menu";
 
 export const dynamic = "force-dynamic";
 
@@ -46,18 +45,9 @@ export default async function AdminPage() {
             dolunca otomatik kilitlenir.
           </p>
         </div>
-        <span className="text-xs text-muted-foreground">{user?.email}</span>
+        <AdminAccountMenu email={user?.email ?? ""} />
       </div>
       <AdminPanel initialOrgs={orgs} />
-
-      <div className="mt-8 rounded-xl border bg-card p-6">
-        <h2 className="font-semibold">Admin hesabı</h2>
-        <p className="mb-2 text-sm text-muted-foreground">{user?.email}</p>
-        <ChangePassword />
-        <div className="mt-4 border-t pt-4">
-          <LogoutButton />
-        </div>
-      </div>
     </div>
   );
 }
