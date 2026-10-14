@@ -20,6 +20,7 @@ import {
   Settings,
   CreditCard,
   ShieldCheck,
+  UserCircle,
   HelpCircle,
   Menu,
   X,
@@ -156,6 +157,12 @@ const navSections: { title?: string; items: NavItem[] }[] = [
         icon: Settings,
         color: "bg-slate-500 text-white",
         ownerOnly: true,
+      },
+      {
+        href: "/hesap",
+        label: "Hesabım",
+        icon: UserCircle,
+        color: "bg-zinc-500 text-white",
       },
       {
         href: "/rehber",
