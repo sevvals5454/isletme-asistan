@@ -8,7 +8,6 @@ import { PushPrompt } from "@/components/push-prompt";
 import { WelcomeTour } from "@/components/welcome-tour";
 import { AccessLock } from "@/components/access-lock";
 import { isLocked, trialDaysLeft } from "@/lib/plans";
-import { isAdminEmail } from "@/lib/admin";
 import { nowMs } from "@/lib/time";
 
 export default async function AppLayout({
@@ -95,12 +94,7 @@ export default async function AppLayout({
       <WelcomeTour />
       <UpdateNotifier />
       <AppointmentSoonNotifier orgName={orgName} templates={messageTemplates} />
-      <Sidebar
-        orgName={orgName}
-        userEmail={user.email ?? ""}
-        role={role}
-        isAdmin={isAdminEmail(user.email)}
-      />
+      <Sidebar orgName={orgName} userEmail={user.email ?? ""} role={role} />
       <main className="md:pl-64">
         <PushPrompt />
         {role === "owner" && daysLeft !== null && (

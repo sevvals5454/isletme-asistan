@@ -46,6 +46,7 @@ export async function updateSession(request: NextRequest) {
     isAuthRoute ||
     isLegalRoute ||
     pathname.startsWith("/auth/callback") || // e-posta onay/şifre sıfırlama kod değişimi
+    pathname.startsWith("/admin") || // ayrı admin portalı (kendi giriş ekranı var)
     pathname.startsWith("/r/") ||
     pathname.startsWith("/b/") ||
     pathname.startsWith("/api/booking/") || // online randevu oluşturma (herkese açık)
